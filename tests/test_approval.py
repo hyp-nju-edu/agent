@@ -33,5 +33,16 @@ async def test_threshold_approves_medium():
     a = await ThresholdApprove().approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.MEDIUM))
     assert a.decision.value == "approved"
 
+@pytest.mark.asyncio
+async def test_threshold_denies_critical():
+    a = await ThresholdApprove().approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.CRITICAL))
+    assert a.decision.value == "denied"
+
+@pytest.mark.asyncio
+async def test_threshold_high_still_denies_critical():
+    a = await ThresholdApprove(threshold=RiskLevel.HIGH).approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.CRITICAL))
+    assert a.decision.value == "denied"
+
 def test_approval_policy_is_protocol():
     assert hasattr(ApprovalPolicy, "approve")
+    assert isinstance(AutoApprove(), ApprovalPolicy)
