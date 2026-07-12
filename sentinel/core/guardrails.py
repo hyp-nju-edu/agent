@@ -1,5 +1,7 @@
 from __future__ import annotations
 import re
+from pathlib import Path
+import fnmatch
 from typing import Protocol, runtime_checkable
 
 from sentinel.core.types import Action, Decision, GuardrailResult, RiskLevel, RunContext
@@ -48,3 +50,77 @@ class PatternGuardrail:
             decision=Decision.ALLOW, reason="no dangerous pattern",
             risk_level=RiskLevel.LOW, guardrail_name=self.name,
         )
+
+
+SENSITIVE_GLOBS = ["**/.env", "**/.aws/*", "**/.ssh/*", "**/credentials*",
+                   "**/*.key", "**/*.pem"]
+
+
+class ScopeFenceGuardrail:
+    name = "scope_fence"
+
+    def __init__(self, workspace: str = ".") -> None:
+        self._workspace = Path(workspace).resolve()
+
+    def _is_within(self, path: str) -> bool:
+        try:
+            p = (self._workspace / path).resolve()
+        except Exception:
+            return False
+        return self._workspace == p or self._workspace in p.parents
+
+    def _is_sensitive(self, path: str) -> bool:
+        for pat in SENSITIVE_GLOBS:
+            if fnmatch.fnmatch(path, pat) or fnmatch.fnmatch("/" + path, pat):
+                return True
+        return False
+
+    def check(self, action: Action, ctx: RunContext) -> GuardrailResult:
+        path = action.args.get("path", "")
+        if not path:
+            return GuardrailResult(Decision.ALLOW, "no path", RiskLevel.LOW, self.name)
+        if self._is_sensitive(path):
+            return GuardrailResult(Decision.DENY, f"sensitive path denied: {path}",
+                                    RiskLevel.CRITICAL, self.name)
+        if not self._is_within(path):
+            return GuardrailResult(Decision.DENY, f"path outside workspace: {path}",
+                                    RiskLevel.HIGH, self.name)
+        return GuardrailResult(Decision.ALLOW, "within workspace", RiskLevel.LOW, self.name)
+
+
+NETWORK_HINTS = ["pip install", "curl ", "wget ", "git clone", "npm install",
+                 "http://", "https://"]
+
+
+class SandboxBoundaryGuardrail:
+    name = "sandbox_boundary"
+
+    def check(self, action: Action, ctx: RunContext) -> GuardrailResult:
+        text = _shell_text(action)
+        for hint in NETWORK_HINTS:
+            if hint in text:
+                return GuardrailResult(
+                    Decision.REQUIRE_APPROVAL,
+                    f"action requires network: {hint.strip()}",
+                    RiskLevel.HIGH, self.name,
+                )
+        return GuardrailResult(Decision.ALLOW, "no network needed",
+                               RiskLevel.LOW, self.name)
+
+
+TOOL_RISK = {
+    "read_file": RiskLevel.LOW,
+    "list_dir": RiskLevel.LOW,
+    "search": RiskLevel.LOW,
+    "write_file": RiskLevel.MEDIUM,
+    "run_tests": RiskLevel.MEDIUM,
+    "run_shell": RiskLevel.HIGH,
+}
+
+
+class RiskClassifierGuardrail:
+    name = "risk_classifier"
+
+    def check(self, action: Action, ctx: RunContext) -> GuardrailResult:
+        risk = TOOL_RISK.get(action.tool, RiskLevel.MEDIUM)
+        return GuardrailResult(Decision.ALLOW, "classified", risk, self.name)

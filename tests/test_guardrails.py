@@ -1,5 +1,8 @@
 from sentinel.core.types import Action, Decision, RiskLevel, RunContext
 from sentinel.core.guardrails import PatternGuardrail, Guardrail
+from sentinel.core.guardrails import (
+    ScopeFenceGuardrail, SandboxBoundaryGuardrail, RiskClassifierGuardrail,
+)
 
 def test_pattern_guardrail_denies_rm_rf():
     g = PatternGuardrail()
@@ -55,3 +58,44 @@ def test_pattern_guardrail_denies_chmod_R_777():
 def test_guardrail_is_protocol():
     assert hasattr(Guardrail, "check")
     assert isinstance(PatternGuardrail(), Guardrail)
+
+def test_scope_fence_denies_out_of_workspace_write():
+    g = ScopeFenceGuardrail(workspace="/tmp/ws")
+    r = g.check(Action("write_file", {"path": "../../etc/passwd", "content": "x"}), RunContext(task=""))
+    assert r.decision == Decision.DENY
+
+def test_scope_fence_denies_sensitive_read():
+    g = ScopeFenceGuardrail(workspace="/tmp/ws")
+    r = g.check(Action("read_file", {"path": ".env"}), RunContext(task=""))
+    assert r.decision == Decision.DENY
+
+def test_scope_fence_denies_ssh_read():
+    g = ScopeFenceGuardrail(workspace="/tmp/ws")
+    r = g.check(Action("read_file", {"path": "~/.ssh/id_rsa"}), RunContext(task=""))
+    assert r.decision == Decision.DENY
+
+def test_scope_fence_allows_in_workspace_write():
+    g = ScopeFenceGuardrail(workspace="/tmp/ws")
+    r = g.check(Action("write_file", {"path": "src/main.py", "content": "x"}), RunContext(task=""))
+    assert r.decision == Decision.ALLOW
+
+def test_sandbox_boundary_flags_network_action():
+    g = SandboxBoundaryGuardrail()
+    r = g.check(Action("run_shell", {"cmd": "pip install requests"}), RunContext(task=""))
+    assert r.decision == Decision.REQUIRE_APPROVAL
+    assert "network" in r.reason.lower()
+
+def test_sandbox_boundary_allows_offline():
+    g = SandboxBoundaryGuardrail()
+    r = g.check(Action("run_shell", {"cmd": "pytest"}), RunContext(task=""))
+    assert r.decision == Decision.ALLOW
+
+def test_risk_classifier_assigns_high_to_write():
+    g = RiskClassifierGuardrail()
+    r = g.check(Action("write_file", {"path": "a.py", "content": "x"}), RunContext(task=""))
+    assert r.risk_level == RiskLevel.MEDIUM
+
+def test_risk_classifier_assigns_critical_to_shell():
+    g = RiskClassifierGuardrail()
+    r = g.check(Action("run_shell", {"cmd": "x"}), RunContext(task=""))
+    assert r.risk_level == RiskLevel.HIGH
