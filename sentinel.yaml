@@ -1,0 +1,12 @@
+provider: openai
+model: gpt-4o-mini
+max_turns: 10
+approval_timeout: 30
+sandbox:
+  image: sentinel-sandbox:latest
+  network: false
+tools: [read_file, write_file, list_dir, run_shell, run_tests, search]
+guardrail_patterns:
+  - "rm -rf"
+  - "DROP TABLE"
+  - "git push --force"
