@@ -5,11 +5,11 @@ from typing import Protocol, runtime_checkable
 from sentinel.core.types import Action, Decision, GuardrailResult, RiskLevel, RunContext
 
 DEFAULT_PATTERNS: list[str] = [
-    r"\brm\s+-rf\b",
+    r"\brm\b(?=.*(?:--recursive|\s-[a-z]*r))(?=.*(?:--force|\s-[a-z]*f))",
     r"DROP\s+TABLE",
     r"git\s+push\s+(--force|-f)\b",
     r"curl\b.*\|\s*sh",
-    r"chmod\s+777\b",
+    r"\bchmod\b.*\b0*777\b",
     r":\(\)\{\s*:\|:&\s*\};\s*:",  # fork bomb
 ]
 
