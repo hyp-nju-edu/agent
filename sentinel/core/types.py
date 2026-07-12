@@ -12,14 +12,24 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"
 
     def __lt__(self, other: "RiskLevel") -> bool:
-        order = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1,
-                 RiskLevel.HIGH: 2, RiskLevel.CRITICAL: 3}
-        return order[self] < order[other]
+        return self._ORDER[self] < self._ORDER[other]
 
     def __gt__(self, other: "RiskLevel") -> bool:
-        order = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1,
-                 RiskLevel.HIGH: 2, RiskLevel.CRITICAL: 3}
-        return order[self] > order[other]
+        return self._ORDER[self] > self._ORDER[other]
+
+    def __le__(self, other: "RiskLevel") -> bool:
+        return self._ORDER[self] <= self._ORDER[other]
+
+    def __ge__(self, other: "RiskLevel") -> bool:
+        return self._ORDER[self] >= self._ORDER[other]
+
+
+RiskLevel._ORDER = {
+    RiskLevel.LOW: 0,
+    RiskLevel.MEDIUM: 1,
+    RiskLevel.HIGH: 2,
+    RiskLevel.CRITICAL: 3,
+}
 
 
 class Decision(str, Enum):

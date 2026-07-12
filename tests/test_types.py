@@ -20,6 +20,12 @@ def test_risk_level_ordering():
     assert RiskLevel.LOW < RiskLevel.HIGH
     assert RiskLevel.CRITICAL > RiskLevel.MEDIUM
 
+def test_risk_level_le_ge():
+    assert (RiskLevel.LOW <= RiskLevel.HIGH) is True
+    assert (RiskLevel.CRITICAL <= RiskLevel.MEDIUM) is False
+    assert (RiskLevel.HIGH >= RiskLevel.LOW) is True
+    assert (RiskLevel.MEDIUM >= RiskLevel.CRITICAL) is False
+
 def test_guardrail_result_fields():
     r = GuardrailResult(decision=Decision.DENY, reason="x",
                         risk_level=RiskLevel.CRITICAL, guardrail_name="pat")
