@@ -1,4 +1,4 @@
-from sentinel.core.types import Action, Decision, RiskLevel, RunContext
+from sentinel.core.types import Action, Decision, GuardrailResult, RiskLevel, RunContext
 from sentinel.core.guardrails import PatternGuardrail, Guardrail
 from sentinel.core.guardrails import (
     ScopeFenceGuardrail, SandboxBoundaryGuardrail, RiskClassifierGuardrail,
@@ -121,3 +121,25 @@ def test_pipeline_highest_risk_wins():
     r = pipe.check(Action("run_shell", {"cmd": "pip install x"}), RunContext(task=""))
     assert r.decision == Decision.REQUIRE_APPROVAL
     assert r.risk_level == RiskLevel.HIGH
+
+
+class _MediumApproval:
+    name = "med"
+
+    def check(self, action, ctx):
+        return GuardrailResult(Decision.REQUIRE_APPROVAL, "med", RiskLevel.MEDIUM, "med")
+
+
+class _HighApproval:
+    name = "high"
+
+    def check(self, action, ctx):
+        return GuardrailResult(Decision.REQUIRE_APPROVAL, "high", RiskLevel.HIGH, "high")
+
+
+def test_pipeline_highest_risk_wins_two_approvals():
+    pipe = GuardrailPipeline([_MediumApproval(), _HighApproval()])
+    r = pipe.check(Action("run_shell", {"cmd": "x"}), RunContext(task=""))
+    assert r.decision == Decision.REQUIRE_APPROVAL
+    assert r.risk_level == RiskLevel.HIGH
+    assert r.guardrail_name == "high"
