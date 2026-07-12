@@ -97,3 +97,44 @@ async def test_demo_hitl_depth():
     assert any(e.type == "ApprovalNeeded" for e in events)
     assert any(e.type == "ActionDenied" for e in events)
     assert not any(e.type == "ActionExecuted" for e in events)
+
+
+# ③ HITL depth — approve path
+@pytest.mark.asyncio
+async def test_demo_hitl_depth_approve():
+    llm = MockLLM(responses=[
+        LLMResponse(text="", tool_calls=[{"tool": "run_shell", "args": {"cmd": "pip install requests"}}]),
+        LLMResponse(text="done", tool_calls=[]),
+    ])
+    hitl = HITLStateMachine()
+    events = []
+    async for e in agent_loop(RunContext(task="demo"), llm, ToolRegistry([StubShell()]),
+                               _pipeline(), AutoApprove(), InProcessSandbox(workspace="."),
+                               AuditLog(), hitl, max_turns=3):
+        events.append(e)
+    approval_events = [e for e in events if e.type == "ApprovalNeeded"]
+    assert approval_events
+    action_id = approval_events[0].data["action_id"]
+    assert any(e.type == "ActionExecuted" for e in events)
+    assert hitl.state(action_id) == ActionState.EXECUTED
+
+
+# ③ HITL depth — timeout path (manifests as denial at the loop level)
+@pytest.mark.asyncio
+async def test_demo_hitl_depth_timeout():
+    llm = MockLLM(responses=[
+        LLMResponse(text="", tool_calls=[{"tool": "run_shell", "args": {"cmd": "pip install requests"}}]),
+        LLMResponse(text="done", tool_calls=[]),
+    ])
+    audit = AuditLog()
+    events = []
+    async for e in agent_loop(RunContext(task="demo"), llm, ToolRegistry([StubShell()]),
+                               _pipeline(), AutoDeny(), InProcessSandbox(workspace="."),
+                               audit, HITLStateMachine(), max_turns=3):
+        events.append(e)
+    assert any(e.type == "ApprovalNeeded" for e in events)
+    assert any(e.type == "ActionDenied" for e in events)
+    assert not any(e.type == "ActionExecuted" for e in events)
+    # audit log records the denied (skipped) action
+    denied_entries = [e for e in audit.all() if e.outcome == "skipped"]
+    assert denied_entries, "expected an audit entry with outcome=skipped for the denied action"

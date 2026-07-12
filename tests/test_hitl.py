@@ -49,3 +49,19 @@ def test_unknown_action_raises():
     fsm = HITLStateMachine()
     with pytest.raises(KeyError):
         fsm.approve("nope")
+
+def test_contains_returns_false_for_unknown():
+    fsm = HITLStateMachine()
+    assert fsm.contains("nope") is False
+
+def test_contains_returns_true_after_submit():
+    fsm = HITLStateMachine()
+    a = Action("x", {}, id="a1")
+    fsm.submit(a)
+    assert fsm.contains("a1") is True
+
+def test_contains_returns_true_after_deny():
+    fsm = HITLStateMachine()
+    fsm.submit(Action("x", {}, id="a1"))
+    fsm.deny("a1")
+    assert fsm.contains("a1") is True

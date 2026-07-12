@@ -22,6 +22,13 @@ class StubTool:
     async def execute(self, args, sandbox):
         return ToolResult(success=self._success, stdout=self._stdout)
 
+
+class RaisingTool:
+    name = "run_shell"
+    risk_level = RiskLevel.HIGH
+    async def execute(self, args, sandbox):
+        raise RuntimeError("tool blew up")
+
 def _events(gen):
     import asyncio
     async def collect():
@@ -95,3 +102,47 @@ async def test_loop_denies_when_approval_rejected():
     assert any(e.type == "ApprovalNeeded" for e in events)   # also verifies Finding 1
     assert any(e.type == "ActionDenied" for e in events)
     assert not any(e.type == "ActionExecuted" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_loop_approve_then_execute_path_end_to_end():
+    llm = MockLLM(responses=[
+        LLMResponse(text="", tool_calls=[{"tool": "run_shell", "args": {"cmd": "pip install requests"}}]),
+        LLMResponse(text="done", tool_calls=[]),
+    ])
+    tools = ToolRegistry([StubTool(stdout="installed")])
+    pipe = GuardrailPipeline([SandboxBoundaryGuardrail()])  # pip install -> REQUIRE_APPROVAL
+    hitl = HITLStateMachine()
+    events = []
+    async for e in agent_loop(RunContext(task="t"), llm, tools, pipe,
+                              AutoApprove(), InProcessSandbox(workspace="."),
+                              AuditLog(), hitl, max_turns=5):
+        events.append(e)
+    # capture action_id from ApprovalNeeded (or ActionRequested)
+    approval_events = [e for e in events if e.type == "ApprovalNeeded"]
+    assert approval_events, "expected an ApprovalNeeded event"
+    action_id = approval_events[0].data["action_id"]
+    assert any(e.type == "ActionExecuted" for e in events)
+    assert hitl.state(action_id) == ActionState.EXECUTED
+
+
+@pytest.mark.asyncio
+async def test_loop_tool_exception_yields_failed_execution_and_continues():
+    llm = MockLLM(responses=[
+        LLMResponse(text="", tool_calls=[{"tool": "run_shell", "args": {"cmd": "pytest"}}]),
+        LLMResponse(text="done", tool_calls=[]),
+    ])
+    tools = ToolRegistry([RaisingTool()])
+    pipe = GuardrailPipeline([PatternGuardrail()])
+    events = []
+    async for e in agent_loop(RunContext(task="t"), llm, tools, pipe,
+                              AutoApprove(), InProcessSandbox(workspace="."),
+                              AuditLog(), HITLStateMachine(), max_turns=5):
+        events.append(e)
+    types = [e.type for e in events]
+    executed = [e for e in events if e.type == "ActionExecuted"]
+    assert executed, "expected an ActionExecuted event"
+    assert executed[0].data["success"] is False
+    # loop must not stop on the tool error (no Stopped with reason=error)
+    stopped = [e for e in events if e.type == "Stopped"]
+    assert not stopped or stopped[-1].data.get("reason") != "error"

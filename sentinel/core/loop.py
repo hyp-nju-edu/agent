@@ -68,8 +68,11 @@ async def agent_loop(
                                     data={"action_id": action.id, "reason": approval.reason})
                         continue
                 tool = tools.get(action.tool)
-                tool_result = await tool.execute(action.args, sandbox)
-                if action.id in hitl._states:
+                try:
+                    tool_result = await tool.execute(action.args, sandbox)
+                except Exception as e:
+                    tool_result = ToolResult(success=False, error=str(e))
+                if hitl.contains(action.id):
                     hitl.mark_executed(action.id, success=tool_result.success)
                 yield Event(type="ActionExecuted",
                             data={"action_id": action.id, "success": tool_result.success})

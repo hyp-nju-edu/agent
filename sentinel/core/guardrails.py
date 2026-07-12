@@ -131,7 +131,20 @@ class GuardrailPipeline:
         self._guardrails = list(guardrails)
 
     def check(self, action: Action, ctx: RunContext) -> GuardrailResult:
-        results = [g.check(action, ctx) for g in self._guardrails]
+        if not self._guardrails:
+            return GuardrailResult(
+                Decision.DENY, "no guardrails configured",
+                RiskLevel.CRITICAL, "pipeline",
+            )
+        results: list[GuardrailResult] = []
+        for g in self._guardrails:
+            try:
+                results.append(g.check(action, ctx))
+            except Exception as e:
+                return GuardrailResult(
+                    Decision.DENY, f"guardrail error: {e}",
+                    RiskLevel.CRITICAL, g.name,
+                )
         for r in results:
             if r.decision == Decision.DENY:
                 return r
@@ -142,4 +155,5 @@ class GuardrailPipeline:
         for r in results:
             if r.decision == Decision.ALLOW:
                 return r
-        return GuardrailResult(Decision.ALLOW, "no guardrails", RiskLevel.LOW, "pipeline")
+        return GuardrailResult(Decision.DENY, "no guardrail allowed",
+                               RiskLevel.CRITICAL, "pipeline")

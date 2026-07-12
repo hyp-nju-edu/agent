@@ -46,6 +46,9 @@ class HITLStateMachine:
     def state(self, action_id: str) -> ActionState:
         return self._states[action_id]
 
+    def contains(self, action_id: str) -> bool:
+        return action_id in self._states
+
     def _require(self, action_id: str, expected: ActionState) -> None:
         if action_id not in self._states:
             raise KeyError(f"unknown action: {action_id}")

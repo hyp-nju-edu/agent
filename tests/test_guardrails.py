@@ -143,3 +143,26 @@ def test_pipeline_highest_risk_wins_two_approvals():
     assert r.decision == Decision.REQUIRE_APPROVAL
     assert r.risk_level == RiskLevel.HIGH
     assert r.guardrail_name == "high"
+
+
+def test_pipeline_empty_denies_fail_closed():
+    pipe = GuardrailPipeline([])
+    r = pipe.check(Action("run_shell", {"cmd": "pytest"}), RunContext(task=""))
+    assert r.decision == Decision.DENY
+    assert r.risk_level == RiskLevel.CRITICAL
+    assert r.guardrail_name == "pipeline"
+
+
+class _RaisingGuardrail:
+    name = "raising"
+    def check(self, action, ctx):
+        raise RuntimeError("boom")
+
+
+def test_pipeline_guardrail_exception_denies_fail_closed():
+    pipe = GuardrailPipeline([_RaisingGuardrail()])
+    r = pipe.check(Action("run_shell", {"cmd": "pytest"}), RunContext(task=""))
+    assert r.decision == Decision.DENY
+    assert r.risk_level == RiskLevel.CRITICAL
+    assert r.guardrail_name == "raising"
+    assert "guardrail error" in r.reason
