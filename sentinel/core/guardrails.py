@@ -124,3 +124,22 @@ class RiskClassifierGuardrail:
     def check(self, action: Action, ctx: RunContext) -> GuardrailResult:
         risk = TOOL_RISK.get(action.tool, RiskLevel.MEDIUM)
         return GuardrailResult(Decision.ALLOW, "classified", risk, self.name)
+
+
+class GuardrailPipeline:
+    def __init__(self, guardrails: list[Guardrail]) -> None:
+        self._guardrails = list(guardrails)
+
+    def check(self, action: Action, ctx: RunContext) -> GuardrailResult:
+        results = [g.check(action, ctx) for g in self._guardrails]
+        for r in results:
+            if r.decision == Decision.DENY:
+                return r
+        approvals = [r for r in results if r.decision == Decision.REQUIRE_APPROVAL]
+        if approvals:
+            best = max(approvals, key=lambda x: x.risk_level)
+            return best
+        for r in results:
+            if r.decision == Decision.ALLOW:
+                return r
+        return GuardrailResult(Decision.ALLOW, "no guardrails", RiskLevel.LOW, "pipeline")

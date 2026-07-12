@@ -2,6 +2,7 @@ from sentinel.core.types import Action, Decision, RiskLevel, RunContext
 from sentinel.core.guardrails import PatternGuardrail, Guardrail
 from sentinel.core.guardrails import (
     ScopeFenceGuardrail, SandboxBoundaryGuardrail, RiskClassifierGuardrail,
+    GuardrailPipeline,
 )
 
 def test_pattern_guardrail_denies_rm_rf():
@@ -98,4 +99,25 @@ def test_risk_classifier_assigns_high_to_write():
 def test_risk_classifier_assigns_critical_to_shell():
     g = RiskClassifierGuardrail()
     r = g.check(Action("run_shell", {"cmd": "x"}), RunContext(task=""))
+    assert r.risk_level == RiskLevel.HIGH
+
+def test_pipeline_deny_short_circuits():
+    pipe = GuardrailPipeline([PatternGuardrail(), ScopeFenceGuardrail(workspace="/tmp/ws")])
+    r = pipe.check(Action("run_shell", {"cmd": "rm -rf /"}), RunContext(task=""))
+    assert r.decision == Decision.DENY
+
+def test_pipeline_require_approval_when_network():
+    pipe = GuardrailPipeline([PatternGuardrail(), SandboxBoundaryGuardrail()])
+    r = pipe.check(Action("run_shell", {"cmd": "pip install requests"}), RunContext(task=""))
+    assert r.decision == Decision.REQUIRE_APPROVAL
+
+def test_pipeline_allow_when_safe():
+    pipe = GuardrailPipeline([PatternGuardrail(), SandboxBoundaryGuardrail()])
+    r = pipe.check(Action("run_shell", {"cmd": "pytest"}), RunContext(task=""))
+    assert r.decision == Decision.ALLOW
+
+def test_pipeline_highest_risk_wins():
+    pipe = GuardrailPipeline([SandboxBoundaryGuardrail(), RiskClassifierGuardrail()])
+    r = pipe.check(Action("run_shell", {"cmd": "pip install x"}), RunContext(task=""))
+    assert r.decision == Decision.REQUIRE_APPROVAL
     assert r.risk_level == RiskLevel.HIGH
