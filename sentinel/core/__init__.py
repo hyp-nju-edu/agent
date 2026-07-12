@@ -1,0 +1,1 @@
+"""Sentinel harness core."""
