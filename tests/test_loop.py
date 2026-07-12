@@ -4,7 +4,9 @@ from sentinel.core.types import (
 )
 from sentinel.core.llm import MockLLM, LLMResponse
 from sentinel.core.tools import ToolRegistry
-from sentinel.core.guardrails import GuardrailPipeline, PatternGuardrail
+from sentinel.core.guardrails import (
+    GuardrailPipeline, PatternGuardrail, SandboxBoundaryGuardrail,
+)
 from sentinel.core.approval import AutoApprove, AutoDeny
 from sentinel.core.sandbox import InProcessSandbox
 from sentinel.core.audit import AuditLog
@@ -76,3 +78,20 @@ async def test_loop_stops_on_max_turns():
         events.append(e)
     assert events[-1].type == "Stopped"
     assert "max_turns" in events[-1].data.get("reason", "")
+
+@pytest.mark.asyncio
+async def test_loop_denies_when_approval_rejected():
+    llm = MockLLM(responses=[
+        LLMResponse(text="", tool_calls=[{"tool": "run_shell", "args": {"cmd": "pip install x"}}]),
+        LLMResponse(text="done", tool_calls=[]),
+    ])
+    tools = ToolRegistry([StubTool()])
+    pipe = GuardrailPipeline([SandboxBoundaryGuardrail()])  # pip install -> REQUIRE_APPROVAL
+    events = []
+    async for e in agent_loop(RunContext(task="t"), llm, tools, pipe,
+                              AutoDeny(), InProcessSandbox(workspace="."),
+                              AuditLog(), HITLStateMachine(), max_turns=5):
+        events.append(e)
+    assert any(e.type == "ApprovalNeeded" for e in events)   # also verifies Finding 1
+    assert any(e.type == "ActionDenied" for e in events)
+    assert not any(e.type == "ActionExecuted" for e in events)
