@@ -1,0 +1,12 @@
+stages:
+  - test
+
+unit-test:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - pip install -e ".[dev,all]"
+  script:
+    - python -m pytest -q
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
