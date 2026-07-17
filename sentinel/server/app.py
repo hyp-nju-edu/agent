@@ -1,30 +1,51 @@
 from __future__ import annotations
+import asyncio
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
-from sentinel.core.types import RunContext, RiskLevel, ToolResult
-from sentinel.core.llm import MockLLM, LLMResponse
-from sentinel.core.tools import ToolRegistry
+from sentinel.core.types import RunContext, Approval, ApprovalDecision, ToolResult, RiskLevel
+from sentinel.core.llm import LLMProvider, MockLLM, LLMResponse
+from sentinel.core.tools import Tool, ToolRegistry
 from sentinel.core.guardrails import (
     GuardrailPipeline, PatternGuardrail, ScopeFenceGuardrail,
     SandboxBoundaryGuardrail, RiskClassifierGuardrail,
 )
-from sentinel.core.approval import AutoApprove
+from sentinel.core.approval import ApprovalPolicy, AutoApprove, HumanApprove
 from sentinel.core.sandbox import InProcessSandbox
 from sentinel.core.audit import AuditLog
 from sentinel.core.hitl import HITLStateMachine
 from sentinel.core.loop import agent_loop
 
 
-class _StubTool:
-    name = "run_shell"
-    risk_level = RiskLevel.HIGH
+class WebSocketApprovalResolver:
+    """Bridges WebSocket approval replies to the HumanApprove policy.
 
-    async def execute(self, args: dict, sandbox: Any) -> ToolResult:
-        return ToolResult(success=True, stdout="3 passed")
+    resolve() creates a future keyed by action_id and awaits it.
+    submit() resolves that future when the browser replies.
+    Designed for a concurrent loop+receiver architecture.
+    """
+
+    def __init__(self) -> None:
+        self._pending: dict[str, asyncio.Future[Approval]] = {}
+
+    async def resolve(self, action, result) -> Approval:
+        loop = asyncio.get_running_loop()
+        fut: asyncio.Future[Approval] = loop.create_future()
+        self._pending[action.id] = fut
+        return await fut
+
+    def submit(self, action_id: str, decision: str, reason: str = "") -> None:
+        fut = self._pending.pop(action_id, None)
+        if fut is not None and not fut.done():
+            if decision == "approved":
+                fut.set_result(Approval(ApprovalDecision.APPROVED,
+                                        reason or "user approved"))
+            else:
+                fut.set_result(Approval(ApprovalDecision.DENIED,
+                                        reason or "user denied"))
 
 
 def _build_pipeline(workspace: str = ".") -> GuardrailPipeline:
@@ -36,7 +57,23 @@ def _build_pipeline(workspace: str = ".") -> GuardrailPipeline:
     ])
 
 
-def create_app(workspace: str = ".") -> FastAPI:
+class _StubTool:
+    """Default tool for demo mode — returns canned result, no real execution."""
+    name = "run_shell"
+    risk_level = RiskLevel.HIGH
+
+    async def execute(self, args: dict, sandbox: Any) -> ToolResult:
+        return ToolResult(success=True, stdout="3 passed")
+
+
+def create_app(
+    workspace: str = ".",
+    llm: LLMProvider | None = None,
+    tools: list[Tool] | None = None,
+    pipeline: GuardrailPipeline | None = None,
+    use_human_approval: bool = False,
+    approval_timeout: float = 30.0,
+) -> FastAPI:
     app = FastAPI(title="Sentinel")
     audit = AuditLog()
 
@@ -63,29 +100,58 @@ def create_app(workspace: str = ".") -> FastAPI:
     async def ws_endpoint(ws: WebSocket):
         await ws.accept()
         try:
-            while True:
-                msg = await ws.receive_json()
-                if msg.get("type") == "task":
-                    task = msg.get("task", "")
-                    llm = MockLLM(responses=[
-                        LLMResponse(text="",
-                            tool_calls=[{"tool": "run_shell",
-                                         "args": {"cmd": "pytest"}}]),
-                        LLMResponse(text="done", tool_calls=[]),
-                    ])
-                    tools = ToolRegistry([_StubTool()])
-                    async for event in agent_loop(
-                        RunContext(task=task), llm, tools,
-                        _build_pipeline(workspace), AutoApprove(),
-                        InProcessSandbox(workspace=workspace),
-                        audit, HITLStateMachine(), max_turns=5,
-                    ):
-                        await ws.send_json({
-                            "type": event.type,
-                            "data": event.data,
-                        })
-                    await ws.send_json({"type": "SessionComplete"})
+            msg = await ws.receive_json()
+            if msg.get("type") == "task":
+                await _run_session(
+                    ws, msg.get("task", ""), workspace, llm, tools,
+                    pipeline, use_human_approval, approval_timeout, audit,
+                )
         except WebSocketDisconnect:
             pass
+
+    async def _run_session(
+        ws: WebSocket,
+        task: str,
+        workspace: str,
+        llm: LLMProvider | None,
+        tools: list[Tool] | None,
+        pipeline: GuardrailPipeline | None,
+        use_human_approval: bool,
+        approval_timeout: float,
+        audit: AuditLog,
+    ) -> None:
+        active_llm = llm or MockLLM(responses=[
+            LLMResponse(text="",
+                tool_calls=[{"tool": "run_shell",
+                             "args": {"cmd": "pytest"}}]),
+            LLMResponse(text="done", tool_calls=[]),
+        ])
+        from sentinel.core.builtins import default_tools
+        active_tools = ToolRegistry(tools if tools else [_StubTool()])
+        active_pipe = pipeline or _build_pipeline(workspace)
+
+        if use_human_approval:
+            async def resolver(action, result):
+                reply = await ws.receive_json()
+                if reply.get("decision") == "approved":
+                    return Approval(ApprovalDecision.APPROVED,
+                                    "user approved")
+                return Approval(ApprovalDecision.DENIED, "user denied")
+            approval_policy: ApprovalPolicy = HumanApprove(
+                resolver, timeout=approval_timeout)
+        else:
+            approval_policy = AutoApprove()
+
+        async for event in agent_loop(
+            RunContext(task=task), active_llm, active_tools,
+            active_pipe, approval_policy,
+            InProcessSandbox(workspace=workspace),
+            audit, HITLStateMachine(), max_turns=10,
+        ):
+            await ws.send_json({
+                "type": event.type,
+                "data": event.data,
+            })
+        await ws.send_json({"type": "SessionComplete"})
 
     return app
