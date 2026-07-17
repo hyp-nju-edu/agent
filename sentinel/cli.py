@@ -30,8 +30,27 @@ def cmd_config(args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
-    uvicorn.run("sentinel.server.app:app",
-                host=args.host, port=args.port)
+    from sentinel.core.config import load_config
+    from sentinel.credentials import get_credential_store
+    from sentinel.server.app import build_llm, create_app
+
+    config = load_config(args.config)
+    cs = get_credential_store()
+    try:
+        llm = build_llm(config=config, credential_store=cs)
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        print("hint: run 'sentinel config set-key --provider "
+              f"{config.provider}' first", file=sys.stderr)
+        return 1
+
+    app = create_app(
+        workspace=args.workspace,
+        llm=llm,
+        use_human_approval=True,
+        approval_timeout=config.approval_timeout,
+    )
+    uvicorn.run(app, host=args.host, port=args.port)
     return 0
 
 
@@ -55,6 +74,8 @@ def build_parser() -> argparse.ArgumentParser:
     serve = sub.add_parser("serve")
     serve.add_argument("--host", default="0.0.0.0")
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--config", default="sentinel.yaml")
+    serve.add_argument("--workspace", default=".")
 
     return parser
 

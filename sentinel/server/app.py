@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import os
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,9 @@ from sentinel.core.sandbox import InProcessSandbox
 from sentinel.core.audit import AuditLog
 from sentinel.core.hitl import HITLStateMachine
 from sentinel.core.loop import agent_loop
+from sentinel.core.config import Config
+from sentinel.core.providers import OpenAIProvider, AnthropicProvider
+from sentinel.credentials import CredentialStore
 
 
 class WebSocketApprovalResolver:
@@ -55,6 +59,27 @@ def _build_pipeline(workspace: str = ".") -> GuardrailPipeline:
         SandboxBoundaryGuardrail(),
         RiskClassifierGuardrail(),
     ])
+
+
+def build_llm(
+    config: Config,
+    credential_store: CredentialStore | None = None,
+    env: dict[str, str] | None = None,
+) -> LLMProvider:
+    """Build a real LLM provider from config + credentials (keyring or env)."""
+    cs = credential_store or CredentialStore()
+    env = env if env is not None else dict(os.environ)
+    key = cs.get_key(config.provider)
+    if not key:
+        env_key = env.get(f"{config.provider.upper()}_API_KEY", "")
+        key = env_key or None
+    if not key:
+        raise RuntimeError(f"no api key for provider '{config.provider}'")
+    if config.provider == "openai":
+        return OpenAIProvider(api_key=key, model=config.model)
+    if config.provider == "anthropic":
+        return AnthropicProvider(api_key=key, model=config.model)
+    raise ValueError(f"unknown provider: {config.provider}")
 
 
 class _StubTool:
