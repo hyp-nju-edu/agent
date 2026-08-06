@@ -1,0 +1,195 @@
+## Task 2: Core Types
+
+**Files:**
+- Create: `sentinel/core/types.py`
+- Test: `tests/test_types.py`
+
+**Interfaces:**
+- Produces: `Action`, `Decision`, `RiskLevel`, `GuardrailResult`, `ToolResult`, `Feedback`, `Failure`, `FailureKind`, `Event`, `RunContext`, `Approval`, `ApprovalDecision`.
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/test_types.py`:
+```python
+from sentinel.core.types import (
+    Action, Decision, RiskLevel, GuardrailResult, ToolResult,
+    Feedback, Failure, FailureKind, Event, RunContext, Approval,
+    ApprovalDecision,
+)
+
+def test_action_defaults_have_id():
+    a = Action(tool="run_shell", args={"cmd": "ls"})
+    assert a.tool == "run_shell"
+    assert a.id  # auto-generated
+    assert a.raw_source == ""
+    assert a.turn_id == ""
+
+def test_decision_values():
+    assert Decision.ALLOW.value == "allow"
+    assert Decision.DENY.value == "deny"
+    assert Decision.REQUIRE_APPROVAL.value == "require_approval"
+
+def test_risk_level_ordering():
+    assert RiskLevel.LOW < RiskLevel.HIGH
+    assert RiskLevel.CRITICAL > RiskLevel.MEDIUM
+
+def test_guardrail_result_fields():
+    r = GuardrailResult(decision=Decision.DENY, reason="x",
+                        risk_level=RiskLevel.CRITICAL, guardrail_name="pat")
+    assert r.decision == Decision.DENY
+    assert r.risk_level == RiskLevel.CRITICAL
+
+def test_tool_result_defaults():
+    t = ToolResult(success=True)
+    assert t.stdout == "" and t.stderr == ""
+    assert t.truncated is False
+    assert t.artifacts == {}
+
+def test_feedback_unknown_passed():
+    f = Feedback(kind="pytest", passed=None, failures=[], raw_output="...")
+    assert f.passed is None
+    assert f.failures == []
+
+def test_event_carries_type_and_data():
+    e = Event(type="ApprovalNeeded", data={"action_id": "a1"})
+    assert e.type == "ApprovalNeeded"
+    assert e.data["action_id"] == "a1"
+
+def test_run_context_holds_task():
+    ctx = RunContext(task="fix the test")
+    assert ctx.task == "fix the test"
+    assert ctx.turns == []
+
+def test_approval_decision_values():
+    assert ApprovalDecision.APPROVED.value == "approved"
+    assert ApprovalDecision.DENIED.value == "denied"
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+```bash
+python -m pytest tests/test_types.py -v
+```
+Expected: FAIL with `ModuleNotFoundError: No module named 'sentinel.core.types'`
+
+- [ ] **Step 3: Write minimal implementation**
+
+`sentinel/core/types.py`:
+```python
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+from uuid import uuid4
+
+
+class RiskLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+    def __lt__(self, other: "RiskLevel") -> bool:
+        order = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1,
+                 RiskLevel.HIGH: 2, RiskLevel.CRITICAL: 3}
+        return order[self] < order[other]
+
+
+class Decision(str, Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+    REQUIRE_APPROVAL = "require_approval"
+
+
+class ApprovalDecision(str, Enum):
+    APPROVED = "approved"
+    DENIED = "denied"
+
+
+class FailureKind(str, Enum):
+    SYNTAX_ERROR = "syntax_error"
+    ASSERTION_FAILURE = "assertion_failure"
+    IMPORT_ERROR = "import_error"
+    TYPE_ERROR = "type_error"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class Action:
+    tool: str
+    args: dict[str, Any]
+    raw_source: str = ""
+    turn_id: str = ""
+    id: str = field(default_factory=lambda: uuid4().hex)
+
+
+@dataclass
+class GuardrailResult:
+    decision: Decision
+    reason: str
+    risk_level: RiskLevel
+    guardrail_name: str
+
+
+@dataclass
+class ToolResult:
+    success: bool
+    stdout: str = ""
+    stderr: str = ""
+    truncated: bool = False
+    artifacts: dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+
+
+@dataclass
+class Failure:
+    kind: FailureKind
+    message: str
+    location: str = ""
+
+
+@dataclass
+class Feedback:
+    kind: str
+    passed: bool | None
+    failures: list[Failure] = field(default_factory=list)
+    raw_output: str = ""
+
+
+@dataclass
+class Event:
+    type: str
+    data: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Approval:
+    decision: ApprovalDecision
+    reason: str = ""
+
+
+@dataclass
+class RunContext:
+    task: str
+    config: Any = None
+    memory: list[str] = field(default_factory=list)
+    turns: list[Any] = field(default_factory=list)
+    tool_results: list[ToolResult] = field(default_factory=list)
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```bash
+python -m pytest tests/test_types.py -v
+```
+Expected: PASS (9 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add sentinel/core/types.py tests/test_types.py
+git commit -m "feat(core): add core types (Action, Decision, GuardrailResult, Feedback, Event)"
+```
+
+---
+

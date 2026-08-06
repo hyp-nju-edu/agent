@@ -1,0 +1,40 @@
+## Commits
+
+e20bdb5 test(governance): add CRITICAL-risk denial tests and strengthen protocol test
+
+## Stat
+
+ tests/test_approval.py | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+## Diff
+
+diff --git a/tests/test_approval.py b/tests/test_approval.py
+index 1add790..46d7cd6 100644
+--- a/tests/test_approval.py
++++ b/tests/test_approval.py
+@@ -26,12 +26,23 @@ async def test_threshold_approves_low():
+ @pytest.mark.asyncio
+ async def test_threshold_denies_high():
+     a = await ThresholdApprove().approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.HIGH))
+     assert a.decision.value == "denied"
+ 
+ @pytest.mark.asyncio
+ async def test_threshold_approves_medium():
+     a = await ThresholdApprove().approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.MEDIUM))
+     assert a.decision.value == "approved"
+ 
++@pytest.mark.asyncio
++async def test_threshold_denies_critical():
++    a = await ThresholdApprove().approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.CRITICAL))
++    assert a.decision.value == "denied"
++
++@pytest.mark.asyncio
++async def test_threshold_high_still_denies_critical():
++    a = await ThresholdApprove(threshold=RiskLevel.HIGH).approve(Action("x", {}), _r(Decision.REQUIRE_APPROVAL, RiskLevel.CRITICAL))
++    assert a.decision.value == "denied"
++
+ def test_approval_policy_is_protocol():
+     assert hasattr(ApprovalPolicy, "approve")
++    assert isinstance(AutoApprove(), ApprovalPolicy)
+

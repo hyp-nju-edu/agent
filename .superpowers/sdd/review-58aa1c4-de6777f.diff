@@ -1,0 +1,84 @@
+## Commits
+
+de6777f feat(core): add Tool protocol and ToolRegistry
+
+## Stat
+
+ sentinel/core/tools.py | 30 ++++++++++++++++++++++++++++++
+ tests/test_tools.py    | 29 +++++++++++++++++++++++++++++
+ 2 files changed, 59 insertions(+)
+
+## Diff
+
+diff --git a/sentinel/core/tools.py b/sentinel/core/tools.py
+new file mode 100644
+index 0000000..18aed22
+--- /dev/null
++++ b/sentinel/core/tools.py
+@@ -0,0 +1,30 @@
++from __future__ import annotations
++from typing import Protocol, runtime_checkable
++
++from sentinel.core.types import Action, RiskLevel, ToolResult
++
++
++class SandboxBackend(Protocol):
++    async def run(self, command: list[str], cwd: str | None = None) -> ToolResult: ...
++    async def read_file(self, path: str) -> ToolResult: ...
++    async def write_file(self, path: str, content: str) -> ToolResult: ...
++
++
++@runtime_checkable
++class Tool(Protocol):
++    name: str
++    risk_level: RiskLevel
++    async def execute(self, args: dict, sandbox: SandboxBackend) -> ToolResult: ...
++
++
++class ToolRegistry:
++    def __init__(self, tools: list[Tool]) -> None:
++        self._tools = {t.name: t for t in tools}
++
++    def get(self, name: str) -> Tool:
++        if name not in self._tools:
++            raise KeyError(f"unknown tool: {name}")
++        return self._tools[name]
++
++    def names(self) -> list[str]:
++        return list(self._tools.keys())
+diff --git a/tests/test_tools.py b/tests/test_tools.py
+new file mode 100644
+index 0000000..b07248d
+--- /dev/null
++++ b/tests/test_tools.py
+@@ -0,0 +1,29 @@
++import pytest
++from sentinel.core.types import Action, ToolResult, RiskLevel
++from sentinel.core.tools import Tool, ToolRegistry
++
++class EchoTool:
++    name = "echo"
++    risk_level = RiskLevel.LOW
++    async def execute(self, args, sandbox):
++        return ToolResult(success=True, stdout=str(args.get("msg", "")))
++
++@pytest.mark.asyncio
++async def test_tool_executes():
++    t = EchoTool()
++    r = await t.execute({"msg": "hi"}, sandbox=None)
++    assert r.success and r.stdout == "hi"
++
++def test_registry_get_returns_tool():
++    reg = ToolRegistry([EchoTool()])
++    assert reg.get("echo").name == "echo"
++
++def test_registry_get_unknown_raises():
++    reg = ToolRegistry([EchoTool()])
++    import pytest
++    with pytest.raises(KeyError):
++        reg.get("nope")
++
++def test_registry_lists_names():
++    reg = ToolRegistry([EchoTool()])
++    assert reg.names() == ["echo"]
+

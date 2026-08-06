@@ -31,7 +31,6 @@ def cmd_config(args: argparse.Namespace) -> int:
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
     from sentinel.core.config import load_config
-    from sentinel.credentials import get_credential_store
     from sentinel.server.app import build_llm, create_app
 
     config = load_config(args.config)

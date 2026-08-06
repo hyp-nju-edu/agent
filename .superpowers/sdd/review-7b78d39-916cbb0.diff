@@ -1,0 +1,86 @@
+## Commits
+
+916cbb0 chore: scaffold sentinel package and pytest config
+
+## Stat
+
+ .gitignore                | 10 ++++++++++
+ pyproject.toml            | 19 +++++++++++++++++++
+ sentinel/__init__.py      |  2 ++
+ sentinel/core/__init__.py |  1 +
+ tests/__init__.py         |  0
+ tests/conftest.py         |  4 ++++
+ 6 files changed, 36 insertions(+)
+
+## Diff
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..edb1ca6
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,10 @@
++__pycache__/
++*.pyc
++.pytest_cache/
++.venv/
++.env
++*.egg-info/
++dist/
++build/
++sentinel.db
++*.db
+diff --git a/pyproject.toml b/pyproject.toml
+new file mode 100644
+index 0000000..0f576fc
+--- /dev/null
++++ b/pyproject.toml
+@@ -0,0 +1,19 @@
++[build-system]
++requires = ["setuptools>=68"]
++build-backend = "setuptools.build_meta"
++
++[project]
++name = "sentinel-harness"
++version = "0.1.0"
++requires-python = ">=3.11"
++dependencies = ["pyyaml>=6.0"]
++
++[project.optional-dependencies]
++dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
++
++[tool.pytest.ini_options]
++asyncio_mode = "auto"
++testpaths = ["tests"]
++
++[tool.setuptools.packages.find]
++include = ["sentinel*"]
+diff --git a/sentinel/__init__.py b/sentinel/__init__.py
+new file mode 100644
+index 0000000..dba97dc
+--- /dev/null
++++ b/sentinel/__init__.py
+@@ -0,0 +1,2 @@
++"""Sentinel: a coding agent harness."""
++__version__ = "0.1.0"
+diff --git a/sentinel/core/__init__.py b/sentinel/core/__init__.py
+new file mode 100644
+index 0000000..4b125fb
+--- /dev/null
++++ b/sentinel/core/__init__.py
+@@ -0,0 +1 @@
++"""Sentinel harness core."""
+diff --git a/tests/__init__.py b/tests/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/conftest.py b/tests/conftest.py
+new file mode 100644
+index 0000000..ece8e0c
+--- /dev/null
++++ b/tests/conftest.py
+@@ -0,0 +1,4 @@
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
