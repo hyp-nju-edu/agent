@@ -8,3 +8,4 @@ dist/
 build/
 sentinel.db
 *.db
+.superpowers/
