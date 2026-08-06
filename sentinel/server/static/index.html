@@ -41,12 +41,19 @@
   .approval-card { background:var(--panel); border:1px solid var(--yellow);
                     border-radius:8px; padding:14px; margin:8px 0; }
   .approval-card .actions { display:flex; gap:8px; margin-top:10px; }
+  header select { background:var(--panel); color:var(--text);
+                  border:1px solid var(--border); border-radius:6px;
+                  padding:6px 10px; font-size:13px; margin-left:auto; }
+  header select + select { margin-left:8px; }
+  .event.error { border-color:var(--red); }
 </style>
 </head>
 <body>
 <header>
   <h1>Sentinel</h1>
   <span>Coding Agent Harness</span>
+  <select id="provider-select"></select>
+  <select id="model-select"></select>
 </header>
 <main>
   <div id="chat">
@@ -70,6 +77,13 @@ const sendBtn = document.getElementById('send-btn');
 
 ws.onmessage = (e) => {
   const msg = JSON.parse(e.data);
+  if (msg.type === 'Error') {
+    const div = document.createElement('div');
+    div.className = 'event error';
+    div.innerHTML = `<b>Error</b><br>${msg.data.message}`;
+    eventsEl.appendChild(div);
+    return;
+  }
   if (msg.type === 'SessionComplete') return;
   const div = document.createElement('div');
   div.className = 'event ' + msg.type.toLowerCase();
@@ -113,11 +127,48 @@ async function refreshAudit() {
   });
 }
 
+let models = null;
+
+async function loadModels() {
+  const r = await fetch('/models');
+  models = await r.json();
+  const provSel = document.getElementById('provider-select');
+  provSel.innerHTML = '';
+  Object.keys(models.providers).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    provSel.appendChild(opt);
+  });
+  provSel.value = models.default.provider;
+  provSel.onchange = populateModels;
+  populateModels();
+  document.getElementById('model-select').value = models.default.model;
+}
+
+function populateModels() {
+  const provSel = document.getElementById('provider-select');
+  const modelSel = document.getElementById('model-select');
+  modelSel.innerHTML = '';
+  (models.providers[provSel.value] || []).forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    modelSel.appendChild(opt);
+  });
+}
+
+loadModels();
+
 sendBtn.onclick = () => {
   const task = input.value.trim();
   if (!task) return;
   eventsEl.innerHTML = '';
-  ws.send(JSON.stringify({type:'task', task}));
+  ws.send(JSON.stringify({
+    type: 'task', task,
+    provider: document.getElementById('provider-select').value,
+    model: document.getElementById('model-select').value,
+  }));
   input.value = '';
 };
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendBtn.click(); });
