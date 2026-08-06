@@ -55,7 +55,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
     cs = get_credential_store()
     try:
         app = build_server_app(config, cs, args.workspace)
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         print("hint: run 'sentinel config set-key --provider "
               f"{config.provider}' first", file=sys.stderr)

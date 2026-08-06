@@ -181,7 +181,6 @@ def create_app(
                                     "data": {"message": str(e)}})
                 await ws.send_json({"type": "SessionComplete"})
                 return
-        from sentinel.core.builtins import default_tools
         active_tools = ToolRegistry(tools if tools else [_StubTool()])
         active_pipe = pipeline or _build_pipeline(workspace)
 

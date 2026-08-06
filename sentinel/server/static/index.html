@@ -80,7 +80,11 @@ ws.onmessage = (e) => {
   if (msg.type === 'Error') {
     const div = document.createElement('div');
     div.className = 'event error';
-    div.innerHTML = `<b>Error</b><br>${msg.data.message}`;
+    const label = document.createElement('b');
+    label.textContent = 'Error';
+    div.appendChild(label);
+    div.appendChild(document.createElement('br'));
+    div.appendChild(document.createTextNode(msg.data.message));
     eventsEl.appendChild(div);
     return;
   }
@@ -128,10 +132,16 @@ async function refreshAudit() {
 }
 
 let models = null;
+let modelsLoaded = false;
 
 async function loadModels() {
-  const r = await fetch('/models');
-  models = await r.json();
+  try {
+    const r = await fetch('/models');
+    models = await r.json();
+  } catch (err) {
+    renderError('Failed to load models: ' + (err.message || err));
+    return;
+  }
   const provSel = document.getElementById('provider-select');
   provSel.innerHTML = '';
   Object.keys(models.providers).forEach(p => {
@@ -144,6 +154,18 @@ async function loadModels() {
   provSel.onchange = populateModels;
   populateModels();
   document.getElementById('model-select').value = models.default.model;
+  modelsLoaded = true;
+}
+
+function renderError(message) {
+  const div = document.createElement('div');
+  div.className = 'event error';
+  const label = document.createElement('b');
+  label.textContent = 'Error';
+  div.appendChild(label);
+  div.appendChild(document.createElement('br'));
+  div.appendChild(document.createTextNode(message));
+  eventsEl.appendChild(div);
 }
 
 function populateModels() {
@@ -161,6 +183,10 @@ function populateModels() {
 loadModels();
 
 sendBtn.onclick = () => {
+  if (!modelsLoaded) {
+    renderError('Models are still loading, please try again.');
+    return;
+  }
   const task = input.value.trim();
   if (!task) return;
   eventsEl.innerHTML = '';
