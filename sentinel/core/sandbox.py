@@ -51,3 +51,34 @@ class InProcessSandbox:
             return ToolResult(success=True)
         except Exception as exc:
             return ToolResult(success=False, error=str(exc))
+
+    async def list_dir(self, path: str = ".") -> ToolResult:
+        try:
+            p = self._resolve(path)
+            if not p.is_dir():
+                return ToolResult(success=False, error=f"not a directory: {path}")
+            entries = sorted(
+                (f.name + "/" if f.is_dir() else f.name) for f in p.iterdir()
+            )
+            return ToolResult(success=True, stdout="\n".join(entries))
+        except Exception as exc:
+            return ToolResult(success=False, error=str(exc))
+
+    async def search(self, pattern: str, path: str = ".") -> ToolResult:
+        try:
+            import re
+            base = self._resolve(path)
+            regex = re.compile(pattern)
+            matches: list[str] = []
+            for f in sorted(base.rglob("*.py")):
+                try:
+                    for i, line in enumerate(
+                        f.read_text(encoding="utf-8").splitlines(), 1
+                    ):
+                        if regex.search(line):
+                            matches.append(f"{f.relative_to(base)}:{i}: {line.strip()}")
+                except Exception:
+                    continue
+            return ToolResult(success=True, stdout="\n".join(matches))
+        except Exception as exc:
+            return ToolResult(success=False, error=str(exc))

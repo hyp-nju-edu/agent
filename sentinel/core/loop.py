@@ -12,6 +12,18 @@ from sentinel.core.sandbox import InProcessSandbox
 from sentinel.core.audit import AuditEntry, AuditLog
 from sentinel.core.hitl import HITLStateMachine
 from sentinel.core.feedback import select_validator
+from sentinel.core.memory import MemoryStore
+
+
+def build_system_prompt(task: str, memory: MemoryStore | None = None) -> str:
+    parts = [f"Task: {task}"]
+    if memory is not None:
+        snippets = memory.search(task, limit=3)
+        if snippets:
+            parts.append("Relevant context:")
+            for s in snippets:
+                parts.append(f"  - {s}")
+    return "\n".join(parts)
 
 
 async def agent_loop(
@@ -24,13 +36,18 @@ async def agent_loop(
     audit: AuditLog,
     hitl: HITLStateMachine,
     max_turns: int = 10,
+    memory: MemoryStore | None = None,
 ) -> AsyncIterator[Event]:
-    messages = [{"role": "system", "content": f"Task: {ctx.task}"}]
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": build_system_prompt(ctx.task, memory)}
+    ]
     for turn in range(max_turns):
         try:
             yield Event(type="TurnStarted", data={"turn": turn})
             resp = await llm.complete(messages=messages, tools=tools.names())
             yield Event(type="LLMResponse", data={"text": resp.text})
+            if resp.text:
+                messages.append({"role": "assistant", "content": resp.text})
             if not resp.tool_calls:
                 yield Event(type="Stopped", data={"reason": "done"})
                 return

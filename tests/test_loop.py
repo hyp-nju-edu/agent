@@ -146,3 +146,36 @@ async def test_loop_tool_exception_yields_failed_execution_and_continues():
     # loop must not stop on the tool error (no Stopped with reason=error)
     stopped = [e for e in events if e.type == "Stopped"]
     assert not stopped or stopped[-1].data.get("reason") != "error"
+
+
+from sentinel.core.memory import MemoryStore
+from sentinel.core.loop import build_system_prompt
+
+
+def test_build_system_prompt_includes_task_and_memory():
+    mem = MemoryStore()
+    mem.add("convention", "style", "use 4-space indent")
+    prompt = build_system_prompt(task="fix tests", memory=mem)
+    assert "fix tests" in prompt
+    assert "4-space indent" in prompt
+
+
+def test_build_system_prompt_no_memory():
+    prompt = build_system_prompt(task="do thing", memory=None)
+    assert "do thing" in prompt
+
+
+@pytest.mark.asyncio
+async def test_loop_appends_assistant_message():
+    llm = MockLLM(responses=[
+        LLMResponse(text="thinking about it", tool_calls=[{"tool": "run_shell", "args": {"cmd": "pytest"}}]),
+        LLMResponse(text="done", tool_calls=[]),
+    ])
+    tools = ToolRegistry([StubTool(stdout="3 passed")])
+    pipe = GuardrailPipeline([PatternGuardrail()])
+    events = []
+    async for e in agent_loop(RunContext(task="t"), llm, tools, pipe,
+                              AutoApprove(), InProcessSandbox(workspace="."),
+                              AuditLog(), HITLStateMachine(), max_turns=5):
+        events.append(e)
+    assert any(e.type == "Stopped" and e.data.get("reason") == "done" for e in events)

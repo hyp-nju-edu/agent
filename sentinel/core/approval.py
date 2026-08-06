@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Protocol, runtime_checkable
+import asyncio
+from typing import Awaitable, Callable, Protocol, runtime_checkable
 
 from sentinel.core.types import Action, Approval, ApprovalDecision, GuardrailResult, RiskLevel
 
@@ -29,3 +30,22 @@ class ThresholdApprove:
         if result.risk_level <= self._threshold:
             return Approval(ApprovalDecision.APPROVED, "below threshold")
         return Approval(ApprovalDecision.DENIED, "above threshold")
+
+
+class HumanApprove:
+    """Production approval policy: awaits an async resolver, fail-closed on timeout/error."""
+
+    def __init__(self, resolver: Callable[[Action, GuardrailResult],
+                                         Awaitable[Approval]],
+                 timeout: float = 30.0) -> None:
+        self._resolver = resolver
+        self._timeout = timeout
+
+    async def approve(self, action: Action, result: GuardrailResult) -> Approval:
+        try:
+            return await asyncio.wait_for(
+                self._resolver(action, result), timeout=self._timeout)
+        except asyncio.TimeoutError:
+            return Approval(ApprovalDecision.DENIED, "approval timeout")
+        except Exception as e:
+            return Approval(ApprovalDecision.DENIED, f"resolver error: {e}")
