@@ -3,6 +3,7 @@ import argparse
 import getpass
 import sys
 
+from sentinel.core.config import Config
 from sentinel.credentials import CredentialStore
 
 
@@ -28,27 +29,37 @@ def cmd_config(args: argparse.Namespace) -> int:
     return 1
 
 
+def build_server_app(config: Config, cs: CredentialStore,
+                     workspace: str = "."):
+    """Build the FastAPI app with a session-scoped LLM builder."""
+    from sentinel.server.app import build_llm, create_app
+
+    llm = build_llm(config=config, credential_store=cs)
+    return create_app(
+        workspace=workspace,
+        llm=llm,
+        llm_builder=lambda p, m: build_llm(
+            Config(provider=p, model=m), credential_store=cs),
+        default_provider=config.provider,
+        default_model=config.model,
+        use_human_approval=True,
+        approval_timeout=config.approval_timeout,
+    )
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
     from sentinel.core.config import load_config
-    from sentinel.server.app import build_llm, create_app
 
     config = load_config(args.config)
     cs = get_credential_store()
     try:
-        llm = build_llm(config=config, credential_store=cs)
+        app = build_server_app(config, cs, args.workspace)
     except RuntimeError as e:
         print(f"error: {e}", file=sys.stderr)
         print("hint: run 'sentinel config set-key --provider "
               f"{config.provider}' first", file=sys.stderr)
         return 1
-
-    app = create_app(
-        workspace=args.workspace,
-        llm=llm,
-        use_human_approval=True,
-        approval_timeout=config.approval_timeout,
-    )
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
 

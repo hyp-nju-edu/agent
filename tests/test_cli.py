@@ -1,5 +1,10 @@
 import getpass
+
+import pytest
+from fastapi.testclient import TestClient
+
 from sentinel.credentials import CredentialStore
+from sentinel.core.config import Config
 
 
 class FakeKeyring:
@@ -48,3 +53,20 @@ def test_config_clear_key(monkeypatch, capsys):
     monkeypatch.setattr("sentinel.cli.get_credential_store", lambda: cs)
     main(["config", "clear-key", "--provider", "anthropic"])
     assert cs.get_key("anthropic") is None
+
+
+def test_build_server_app_defaults():
+    from sentinel.cli import build_server_app
+    kr = FakeKeyring()
+    kr.set_password("sentinel", "openai", "sk-x")
+    cs = CredentialStore(backend=kr)
+    app = build_server_app(Config(provider="openai", model="gpt-4o-mini"), cs)
+    data = TestClient(app).get("/models").json()
+    assert data["default"] == {"provider": "openai", "model": "gpt-4o-mini"}
+
+
+def test_build_server_app_missing_key_raises():
+    from sentinel.cli import build_server_app
+    cs = CredentialStore(backend=FakeKeyring())
+    with pytest.raises(RuntimeError, match="no api key"):
+        build_server_app(Config(provider="openai", model="gpt-4o-mini"), cs)
