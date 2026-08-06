@@ -70,3 +70,63 @@ def test_models_endpoint_custom_defaults():
         default_provider="anthropic", default_model="claude-sonnet-4"))
     data = client.get("/models").json()
     assert data["default"] == {"provider": "anthropic", "model": "claude-sonnet-4"}
+
+
+from sentinel.core.llm import MockLLM, LLMResponse
+
+
+def test_ws_uses_llm_builder():
+    calls = []
+    def builder(provider, model):
+        calls.append((provider, model))
+        return MockLLM(responses=[LLMResponse(text="done", tool_calls=[])])
+    client = TestClient(create_app(llm_builder=builder))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "task", "task": "hi", "provider": "anthropic",
+                      "model": "claude-sonnet-4"})
+        events = []
+        for _ in range(10):
+            msg = ws.receive_json()
+            events.append(msg)
+            if msg.get("type") == "SessionComplete":
+                break
+    assert calls == [("anthropic", "claude-sonnet-4")]
+    assert any(e["type"] == "TurnStarted" for e in events)
+
+
+def test_ws_llm_builder_error_sends_error_event():
+    def builder(provider, model):
+        raise RuntimeError(f"no api key for provider '{provider}'")
+    client = TestClient(create_app(llm_builder=builder))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "task", "task": "hi", "provider": "openai",
+                      "model": "gpt-4o-mini"})
+        events = []
+        for _ in range(5):
+            msg = ws.receive_json()
+            events.append(msg)
+            if msg.get("type") == "SessionComplete":
+                break
+    types = [e["type"] for e in events]
+    assert "Error" in types
+    assert types[-1] == "SessionComplete"
+    assert "TurnStarted" not in types
+
+
+def test_ws_without_provider_falls_back_to_injected_llm():
+    calls = []
+    def builder(provider, model):
+        calls.append((provider, model))
+        return MockLLM(responses=[LLMResponse(text="done", tool_calls=[])])
+    injected = MockLLM(responses=[LLMResponse(text="done", tool_calls=[])])
+    client = TestClient(create_app(llm=injected, llm_builder=builder))
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "task", "task": "hi"})
+        events = []
+        for _ in range(10):
+            msg = ws.receive_json()
+            events.append(msg)
+            if msg.get("type") == "Stopped":
+                break
+    assert calls == []
+    assert any(e["type"] == "TurnStarted" for e in events)

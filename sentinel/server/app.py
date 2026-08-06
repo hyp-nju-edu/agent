@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -105,6 +105,7 @@ def create_app(
     pipeline: GuardrailPipeline | None = None,
     use_human_approval: bool = False,
     approval_timeout: float = 30.0,
+    llm_builder: Callable[[str, str], LLMProvider] | None = None,
     default_provider: str = "openai",
     default_model: str = "gpt-4o-mini",
 ) -> FastAPI:
@@ -146,6 +147,8 @@ def create_app(
                 await _run_session(
                     ws, msg.get("task", ""), workspace, llm, tools,
                     pipeline, use_human_approval, approval_timeout, audit,
+                    llm_builder,
+                    msg.get("provider"), msg.get("model"),
                 )
         except WebSocketDisconnect:
             pass
@@ -160,6 +163,9 @@ def create_app(
         use_human_approval: bool,
         approval_timeout: float,
         audit: AuditLog,
+        llm_builder: Callable[[str, str], LLMProvider] | None = None,
+        provider: str | None = None,
+        model: str | None = None,
     ) -> None:
         active_llm = llm or MockLLM(responses=[
             LLMResponse(text="",
@@ -167,6 +173,14 @@ def create_app(
                              "args": {"cmd": "pytest"}}]),
             LLMResponse(text="done", tool_calls=[]),
         ])
+        if llm_builder is not None and provider and model:
+            try:
+                active_llm = llm_builder(provider, model)
+            except Exception as e:
+                await ws.send_json({"type": "Error",
+                                    "data": {"message": str(e)}})
+                await ws.send_json({"type": "SessionComplete"})
+                return
         from sentinel.core.builtins import default_tools
         active_tools = ToolRegistry(tools if tools else [_StubTool()])
         active_pipe = pipeline or _build_pipeline(workspace)
