@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from sentinel.server.app import create_app
+from sentinel.server.app import MODEL_REGISTRY, create_app
 
 
 def test_health():
@@ -52,3 +52,21 @@ def test_audit_endpoint():
     entries = r.json()
     assert isinstance(entries, list)
     assert len(entries) > 0
+
+
+def test_models_endpoint_defaults():
+    client = TestClient(create_app())
+    r = client.get("/models")
+    assert r.status_code == 200
+    data = r.json()
+    assert set(data["providers"]) == {"openai", "anthropic"}
+    assert data["providers"]["openai"] == [
+        "gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]
+    assert data["default"] == {"provider": "openai", "model": "gpt-4o-mini"}
+
+
+def test_models_endpoint_custom_defaults():
+    client = TestClient(create_app(
+        default_provider="anthropic", default_model="claude-sonnet-4"))
+    data = client.get("/models").json()
+    assert data["default"] == {"provider": "anthropic", "model": "claude-sonnet-4"}

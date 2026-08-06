@@ -61,6 +61,13 @@ def _build_pipeline(workspace: str = ".") -> GuardrailPipeline:
     ])
 
 
+MODEL_REGISTRY: dict[str, list[str]] = {
+    "openai": ["gpt-4o-mini", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"],
+    "anthropic": ["claude-sonnet-4", "claude-opus-4",
+                  "claude-3-7-sonnet", "claude-3-5-haiku"],
+}
+
+
 def build_llm(
     config: Config,
     credential_store: CredentialStore | None = None,
@@ -98,6 +105,8 @@ def create_app(
     pipeline: GuardrailPipeline | None = None,
     use_human_approval: bool = False,
     approval_timeout: float = 30.0,
+    default_provider: str = "openai",
+    default_model: str = "gpt-4o-mini",
 ) -> FastAPI:
     app = FastAPI(title="Sentinel")
     audit = AuditLog()
@@ -105,6 +114,13 @@ def create_app(
     @app.get("/health")
     async def health():
         return {"status": "ok"}
+
+    @app.get("/models")
+    async def get_models():
+        return {
+            "providers": MODEL_REGISTRY,
+            "default": {"provider": default_provider, "model": default_model},
+        }
 
     @app.get("/audit")
     async def get_audit():
