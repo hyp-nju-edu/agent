@@ -171,9 +171,18 @@
   - `git push origin main`（255b8d0..2a72c61）；
   - 补写本文档与 `SPEC_PROCESS.md`、`REFLECTION.md`；
   - 更新 PLAN 完成标记与 commit hash；
-  - README 补章节、CI 加镜像构建、构建并推送镜像、部署 WebUI。
+  - README 补章节（目录结构 / 已知限制 / 安全边界 / 部署）；
+  - CI 增加镜像构建 job（`build-image`），并让 GHCR 推送在配置了
+    `GHCR_PAT` secret 时启用；
+  - 这些修复在独立分支 `docs/final-deliverables` 上提交（PR 工作流）。
+- **人工决策（部署与镜像推送）**：本机网络仅放行 GitHub / fly.io，
+  Docker Hub 及镜像站不可达，且无云平台凭据。按 owner 决定，公网部署与
+  GHCR 推送由 owner 稍后自行完成；README 已写好部署步骤并留出
+  `<deployed-url>` 占位。CI 的 `build-image` 步骤可在 GitHub 环境正常
+  验证 Dockerfile，不受本机网络限制。
 - **教训**：把"push 到远程、CI 通过、部署可访问"当作验收的一部分，而不是
-  实现完成后才想起——这是评审清单自查暴露的盲区。
+  实现完成后才想起——这是评审清单自查暴露的盲区。凭据与公网访问属于
+  owner 环境，无法由自动化替 owner 完成，应在 README 中显式留出交接位。
 
 ---
 

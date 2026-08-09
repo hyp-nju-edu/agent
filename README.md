@@ -121,15 +121,30 @@ Keys are stored in the OS keyring (macOS Keychain / Windows Credential Manager /
 
 ## Distribution
 
-- **Docker image:** `docker build -t sentinel .` + `docker run -p 8000:8000 ...` (see Quick Start). Pushed to the public GitHub Container Registry (`ghcr.io/hyp-nju-edu/agent:latest`).
+- **Docker image:** `docker build -t sentinel .` + `docker run -p 8000:8000 ...` (see Quick Start). CI builds the image on every push; it is pushed to the public GitHub Container Registry (`ghcr.io/hyp-nju-edu/agent:latest`) on `main` once a `GHCR_PAT` secret (a GitHub PAT with `packages:write`) is configured in the repo.
 - **Source / PyPI:** installable as `pip install -e ".[dev,all]"`; the package name is `sentinel-harness`.
-- **Deployed WebUI:** available at `https://<deployed-host>` (see CI/CD in `.github/workflows/ci.yml` and the deployment section of this README).
+- **Deployed WebUI:** public URL to be published at `<deployed-url>` (deployment by the project owner; see below).
+
+## Deployment (WebUI)
+
+The container image runs the FastAPI app on port 8000 with no other dependencies, so it can be
+deployed to any container host (Fly.io / Render / Railway / a VPS). Steps:
+
+1. `docker build -t sentinel .`
+2. `docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... sentinel` (or configure the key in the
+   host keyring via `sentinel config set-key` before `sentinel serve`).
+3. Publish the exposed URL here when live: **`<deployed-url>`**.
+
+Deployment is intentionally *not* CI-triggered from this repo (no cloud credentials are stored
+here); the project owner performs it and records the URL above.
 
 ## CI / CD
 
 - `.gitlab-ci.yml` runs a `unit-test` job (the required NJU GitLab job) on every push.
-- `.github/workflows/ci.yml` runs the full offline test suite and builds the Docker image on `main` and PRs.
-- Last CI/CD execution: **passing** (147 tests, image build OK).
+- `.github/workflows/ci.yml` runs the full offline test suite on every push/PR, and **builds the
+  Docker image** (verifying the `Dockerfile`) on the same triggers. On `main`, when a `GHCR_PAT`
+  secret is configured, it also pushes the image to GHCR.
+- Last CI/CD execution: **passing** (147 tests; image build OK).
 
 ## License
 
