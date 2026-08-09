@@ -188,10 +188,15 @@ Detailed in §9. Summary here:
 ### 3.6 Configuration
 
 - **Input:** a YAML file (`sentinel.yaml`).
-- **Behavior:** load provider+model, allowed tools, risk thresholds, sandbox
-  settings (image, mounts, network default-off), guardrail patterns,
-  `max_turns`, approval timeout. A snapshot is stored per session so a run is
-  reproducible from its config.
+- **Behavior:** load provider+model, **custom API endpoints (`api_base`)**,
+  allowed tools, risk thresholds, sandbox settings (image, mounts, network
+  default-off), guardrail patterns, `max_turns`, approval timeout. A snapshot
+  is stored per session so a run is reproducible from its config.
+- **`api_base`:** optional per-provider endpoint override, e.g.
+  `api_base: {openai: https://my-proxy.example/v1, anthropic: https://...}`.
+  Defaults to the official OpenAI/Anthropic endpoints when absent. Keys never
+  live in config (see §7), so an API proxy configured here is only an endpoint
+  URL — credentials still come from the keyring/env.
 - **Output:** a `Config` object + a `ConfigSnapshot` row.
 - **Boundary:** unknown keys → warning (ignored); missing required keys →
   startup error. Config never contains secrets (keys live in the keyring).
@@ -397,6 +402,11 @@ governed by the HITL state machine (§9.4).
   `sentinel config clear-key --provider anthropic` (delete from keyring).
 - **`.env` fallback:** supported via `python-dotenv`, documented as plaintext +
   process-env-visible; recommended only for local dev.
+- **Custom API endpoints (`api_base`, §3.6):** an endpoint override is a URL
+  only — no secrets. If you point it at a proxy/relay, the API key still comes
+  from the keyring (or env), never from `sentinel.yaml`. This keeps the
+  credential threat model (§4.2) unchanged while supporting network-restricted
+  environments (e.g. regions that cannot reach api.openai.com directly).
 
 ### 7.2 Distribution
 
@@ -427,6 +437,7 @@ governed by the HITL state machine (§9.4).
 | **Python 3.11+** | Richest LLM/AI ecosystem; easy mock-LLM testing with `pytest`/`pytest-asyncio`; fast iteration; natural fit for an agent harness. |
 | **async-generator event loop** | Real-time streaming UX + clean HITL (approval is an injectable policy); the same loop runs in tests (`MockLLM` + `AutoApprove`) and prod. |
 | **Provider-agnostic LLM layer** | Supports OpenAI + Anthropic behind one `LLMProvider` protocol; the mock sits behind the same interface, so all core tests are provider-independent. |
+| **Custom API endpoints (`api_base`)** | Per-provider endpoint override in `sentinel.yaml`; provider constructors take `base_url: str | None = None` and fall back to official endpoints. Supports network-restricted environments (proxy / relay / China-friendly endpoints) without touching credentials. |
 | **FastAPI + WebSocket** | Native async, first-class WebSocket, simple REST for audit/config; pairs cleanly with the async generator. |
 | **Open Design (`linear-app`, `dashboard` skill)** | Course-recommended design tooling; `linear-app` gives a clean developer-tool aesthetic that fits a coding harness; `dashboard` skill suits the chat + audit layout. |
 | **Docker sandbox** | Strong isolation; the sandbox itself is a guardrail layer (no network, non-root, res-limited); great governance narrative. |

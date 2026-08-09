@@ -57,3 +57,20 @@ def test_build_llm_unknown_provider_raises():
     config = Config(provider="unknown", model="x")
     with pytest.raises(ValueError, match="unknown provider"):
         build_llm(config=config, credential_store=cs, env={})
+
+
+def test_build_llm_passes_base_url_openai():
+    cs = CredentialStore(backend=FakeKeyring())
+    cs.set_key("openai", "sk-test")
+    config = Config(provider="openai", model="gpt-4o-mini",
+                    api_base={"openai": "https://proxy.example.com"})
+    llm = build_llm(config=config, credential_store=cs, env={})
+    assert llm._base_url == "https://proxy.example.com"
+
+
+def test_build_llm_default_base_url_openai():
+    cs = CredentialStore(backend=FakeKeyring())
+    cs.set_key("openai", "sk-test")
+    config = Config(provider="openai", model="gpt-4o-mini")
+    llm = build_llm(config=config, credential_store=cs, env={})
+    assert llm._base_url == "https://api.openai.com"

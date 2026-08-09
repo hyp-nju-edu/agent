@@ -186,4 +186,26 @@
 
 ---
 
+## L-4 · api_base 自定义端点（2026-08-09）
+
+- **背景**：用户报告"设置 API key 后无法对话"。排查发现本机网络受限，
+  `api.openai.com` / Docker Hub 不可达。用户确认需求为「加 api_base 配置项」。
+- **技能**：`brainstorming`（方案对比 A/B/C，用户选 A：Config 加
+  `api_base` 字典 + Provider 加 `base_url` 参数，未配置回退官方端点）。
+- **实现**（TDD，branch `feat/api-base`）：
+  - `Config.api_base: dict[str, str]`（`config.py`）+ `load_config` 解析；
+  - `OpenAIProvider` / `AnthropicProvider` 构造函数加 `base_url: str | None = None`，
+    为 `None` 时用官方端点（`providers.py`）；
+  - `build_llm` 传 `base_url=config.api_base.get(config.provider)`（`app.py`）；
+  - `sentinel.yaml` 加注释示例。
+- **人工干预**：初版 provider 测试用 `httpx.MockTransport` + 相对路径 URL 会
+  因缺 `base_url` 报 `unknown url type`；排查后确认既有测试本就要求 client 显式
+  带 `base_url`，修正新增测试与其一致。还发现我编辑时误删了既有测试
+  `test_anthropic_provider_text_only` 的 `base_url` 参数，一并修复。
+- **验证**：新增 8 个测试，全量 `155 passed`。
+- **教训**：MockTransport 下相对 URL 会崩溃，provider 测试必须为 client 设置
+  `base_url`；改动既有测试文件时用 `git diff` 复核，避免误删原参数。
+
+---
+
 *End of AGENT_LOG.md.*

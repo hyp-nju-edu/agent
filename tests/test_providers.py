@@ -109,3 +109,70 @@ async def test_anthropic_provider_text_only():
     assert resp.text == "all done"
     assert resp.tool_calls == []
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_provider_custom_base_url():
+    seen = {}
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": "ok", "tool_calls": []}}]})
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport,
+                               base_url="https://proxy.example.com")
+    p = OpenAIProvider(api_key="sk-x", model="gpt-4o-mini",
+                       base_url="https://proxy.example.com", client=client)
+    await p.complete(messages=[], tools=[])
+    assert "proxy.example.com" in seen["url"]
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_provider_default_base_url():
+    seen = {}
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": "ok", "tool_calls": []}}]})
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport,
+                               base_url="https://api.openai.com")
+    p = OpenAIProvider(api_key="sk-x", model="gpt-4o-mini", client=client)
+    await p.complete(messages=[], tools=[])
+    assert "api.openai.com" in seen["url"]
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_anthropic_provider_custom_base_url():
+    seen = {}
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={
+            "content": [{"type": "text", "text": "ok"}]})
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport,
+                               base_url="https://proxy.example.com")
+    p = AnthropicProvider(api_key="sk-ant-x", model="claude-sonnet-4",
+                          base_url="https://proxy.example.com", client=client)
+    await p.complete(messages=[], tools=[])
+    assert "proxy.example.com" in seen["url"]
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_anthropic_provider_default_base_url():
+    seen = {}
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={
+            "content": [{"type": "text", "text": "ok"}]})
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport,
+                               base_url="https://api.anthropic.com")
+    p = AnthropicProvider(api_key="sk-ant-x", model="claude-sonnet-4",
+                          client=client)
+    await p.complete(messages=[], tools=[])
+    assert "api.anthropic.com" in seen["url"]
+    await client.aclose()
