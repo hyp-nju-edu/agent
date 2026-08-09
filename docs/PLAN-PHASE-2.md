@@ -1446,6 +1446,7 @@ git commit -m "docs: add README with quick start, testing, and architecture"
 ---
 
 ## Task 12: Custom API endpoints (`api_base`)
+> **Status:** ✅ complete — commits: dd439b6 (PR #2)
 
 **Files:**
 - Modify: `sentinel/core/config.py` (+ `api_base` field)
@@ -1461,7 +1462,7 @@ git commit -m "docs: add README with quick start, testing, and architecture"
 - `build_llm(config, credential_store, env)` passes
   `base_url=config.api_base.get(config.provider)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step $1: Write the failing tests**
 
 `tests/test_providers.py` (append):
 ```python
@@ -1511,12 +1512,12 @@ def test_build_llm_passes_base_url():
     # → provider.base_url == "https://proxy"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step $1: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_providers.py tests/test_config.py tests/test_build_llm.py -q`
 Expected: FAIL — `unexpected keyword argument 'base_url'` / missing `api_base` field.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step $1: Write minimal implementation**
 
 `sentinel/core/config.py` — add field:
 ```python
@@ -1553,12 +1554,12 @@ if config.provider == "anthropic":
 #   anthropic: https://your-anthropic-proxy.example
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step $1: Run tests to verify they pass**
 
 Run: `python -m pytest -q`
 Expected: all pass (147 + new).
 
-- [ ] **Step 5: Commit**
+- [x] **Step $1: Commit**
 
 ```bash
 git add sentinel/core/config.py sentinel/core/providers.py sentinel/server/app.py tests/test_config.py tests/test_providers.py tests/test_build_llm.py sentinel.yaml
