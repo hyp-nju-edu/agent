@@ -1445,6 +1445,128 @@ git commit -m "docs: add README with quick start, testing, and architecture"
 
 ---
 
+## Task 12: Custom API endpoints (`api_base`)
+
+**Files:**
+- Modify: `sentinel/core/config.py` (+ `api_base` field)
+- Modify: `sentinel/core/providers.py` (+ `base_url` param)
+- Modify: `sentinel/server/app.py` (`build_llm` passes base_url)
+- Test: `tests/test_config.py`, `tests/test_providers.py`, `tests/test_build_llm.py`
+
+**Interfaces:**
+- `Config` gains `api_base: dict[str, str] = field(default_factory=dict)`.
+- `OpenAIProvider.__init__(api_key, model, base_url: str | None = None, client=None)`
+  and `AnthropicProvider.__init__(...)` — when `base_url` is `None`, fall back
+  to the official endpoints (`https://api.openai.com` / `https://api.anthropic.com`).
+- `build_llm(config, credential_store, env)` passes
+  `base_url=config.api_base.get(config.provider)`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`tests/test_providers.py` (append):
+```python
+@pytest.mark.asyncio
+async def test_openai_provider_custom_base_url():
+    seen = {}
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok", "tool_calls": []}}]})
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    p = OpenAIProvider(api_key="sk-x", model="gpt-4o-mini",
+                       base_url="https://proxy.example.com", client=client)
+    await p.complete(messages=[], tools=[])
+    assert "proxy.example.com" in seen["url"]
+    await client.aclose()
+
+@pytest.mark.asyncio
+async def test_anthropic_provider_custom_base_url():
+    seen = {}
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "ok"}]})
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    p = AnthropicProvider(api_key="sk-ant-x", model="claude-sonnet-4",
+                          base_url="https://proxy.example.com", client=client)
+    await p.complete(messages=[], tools=[])
+    assert "proxy.example.com" in seen["url"]
+    await client.aclose()
+```
+
+`tests/test_config.py` (append):
+```python
+def test_config_loads_api_base():
+    cfg = load_config(Path(tmp) / "sentinel.yaml")  # with api_base keys
+    assert cfg.api_base["openai"] == "https://proxy.example.com"
+
+def test_config_api_base_defaults_empty():
+    assert Config(provider="openai", model="m").api_base == {}
+```
+
+`tests/test_build_llm.py` (append):
+```python
+def test_build_llm_passes_base_url():
+    # build_llm(Config(provider="openai", model="m", api_base={"openai": "https://proxy"}))
+    # → provider.base_url == "https://proxy"
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `python -m pytest tests/test_providers.py tests/test_config.py tests/test_build_llm.py -q`
+Expected: FAIL — `unexpected keyword argument 'base_url'` / missing `api_base` field.
+
+- [ ] **Step 3: Write minimal implementation**
+
+`sentinel/core/config.py` — add field:
+```python
+api_base: dict[str, str] = field(default_factory=dict)
+```
+and in `load_config`: `api_base=data.get("api_base", {})`.
+
+`sentinel/core/providers.py`:
+```python
+class OpenAIProvider:
+    def __init__(self, api_key: str, model: str,
+                 base_url: str | None = None,
+                 client: httpx.AsyncClient | None = None) -> None:
+        self._api_key = api_key
+        self._model = model
+        self._client = client or httpx.AsyncClient(
+            base_url=base_url or "https://api.openai.com", timeout=60.0)
+```
+(Same pattern for `AnthropicProvider`, default `https://api.anthropic.com`.)
+
+`sentinel/server/app.py` — in `build_llm`:
+```python
+base_url = config.api_base.get(config.provider)
+if config.provider == "openai":
+    return OpenAIProvider(api_key=key, model=config.model, base_url=base_url)
+if config.provider == "anthropic":
+    return AnthropicProvider(api_key=key, model=config.model, base_url=base_url)
+```
+
+`sentinel.yaml` — add commented example:
+```yaml
+# api_base:
+#   openai: https://your-proxy.example/v1
+#   anthropic: https://your-anthropic-proxy.example
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `python -m pytest -q`
+Expected: all pass (147 + new).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add sentinel/core/config.py sentinel/core/providers.py sentinel/server/app.py tests/test_config.py tests/test_providers.py tests/test_build_llm.py sentinel.yaml
+git commit -m "feat(config): support per-provider custom API endpoints via api_base"
+```
+
+---
+
 ## Self-Review Checklist
 
 After all tasks:
