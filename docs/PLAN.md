@@ -61,6 +61,7 @@ Each file has one responsibility. Tests mirror the module layout.
 ---
 
 ## Task 1: Project Scaffolding
+> **Status:** ✅ complete — commits: 916cbb0 / f10ba36
 
 **Files:**
 - Create: `pyproject.toml`
@@ -70,7 +71,7 @@ Each file has one responsibility. Tests mirror the module layout.
 
 **Interfaces:** Produces a runnable `pytest` invocation and an empty importable `sentinel` package.
 
-- [ ] **Step 1: Initialize git repo**
+- [x] **Step 1: Initialize git repo**
 
 ```bash
 cd E:\agent
@@ -79,7 +80,7 @@ git add -A
 git commit -m "chore: initial commit"
 ```
 
-- [ ] **Step 2: Create `.gitignore`**
+- [x] **Step 2: Create `.gitignore`**
 
 ```gitignore
 __pycache__/
@@ -94,7 +95,7 @@ sentinel.db
 *.db
 ```
 
-- [ ] **Step 3: Create `pyproject.toml`**
+- [x] **Step 3: Create `pyproject.toml`**
 
 ```toml
 [build-system]
@@ -118,7 +119,7 @@ testpaths = ["tests"]
 include = ["sentinel*"]
 ```
 
-- [ ] **Step 4: Create package `__init__` files**
+- [x] **Step 4: Create package `__init__` files**
 
 `sentinel/__init__.py`:
 ```python
@@ -141,7 +142,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 ```
 
-- [ ] **Step 5: Install dev deps and verify pytest runs**
+- [x] **Step 5: Install dev deps and verify pytest runs**
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -149,7 +150,7 @@ python -m pytest -q
 ```
 Expected: `no tests ran` (exit 0 — collection succeeds, no tests yet). If `pytest-asyncio` warns about `asyncio_mode`, it is already set to `auto`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -159,6 +160,7 @@ git commit -m "chore: scaffold sentinel package and pytest config"
 ---
 
 ## Task 2: Core Types
+> **Status:** ✅ complete — commits: f802bae / ec0f0cd
 
 **Files:**
 - Create: `sentinel/core/types.py`
@@ -167,7 +169,7 @@ git commit -m "chore: scaffold sentinel package and pytest config"
 **Interfaces:**
 - Produces: `Action`, `Decision`, `RiskLevel`, `GuardrailResult`, `ToolResult`, `Feedback`, `Failure`, `FailureKind`, `Event`, `RunContext`, `Approval`, `ApprovalDecision`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_types.py`:
 ```python
@@ -225,14 +227,14 @@ def test_approval_decision_values():
     assert ApprovalDecision.DENIED.value == "denied"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_types.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError: No module named 'sentinel.core.types'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/types.py`:
 ```python
@@ -337,14 +339,14 @@ class RunContext:
     tool_results: list[ToolResult] = field(default_factory=list)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_types.py -v
 ```
 Expected: PASS (9 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/types.py tests/test_types.py
@@ -354,6 +356,7 @@ git commit -m "feat(core): add core types (Action, Decision, GuardrailResult, Fe
 ---
 
 ## Task 3: LLM Abstraction + MockLLM
+> **Status:** ✅ complete — commits: 58aa1c4
 
 **Files:**
 - Create: `sentinel/core/llm.py`
@@ -362,7 +365,7 @@ git commit -m "feat(core): add core types (Action, Decision, GuardrailResult, Fe
 **Interfaces:**
 - Produces: `LLMProvider` protocol (`async complete(messages, tools) -> LLMResponse`), `LLMResponse`, `MockLLM` (scripts responses from a queue).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_llm.py`:
 ```python
@@ -393,14 +396,14 @@ def test_llm_provider_is_protocol():
     assert hasattr(LLMProvider, "complete")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_llm.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/llm.py`:
 ```python
@@ -436,14 +439,14 @@ class MockLLM:
         return r
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_llm.py -v
 ```
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/llm.py tests/test_llm.py
@@ -453,6 +456,7 @@ git commit -m "feat(core): add LLMProvider protocol and MockLLM"
 ---
 
 ## Task 4: Tool Layer + ToolRegistry
+> **Status:** ✅ complete — commits: de6777f
 
 **Files:**
 - Create: `sentinel/core/tools.py`
@@ -462,7 +466,7 @@ git commit -m "feat(core): add LLMProvider protocol and MockLLM"
 - Consumes: `Action`, `ToolResult` from `types`.
 - Produces: `Tool` protocol (`name`, `risk_level`, `execute(args, sandbox) -> ToolResult`), `ToolRegistry`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_tools.py`:
 ```python
@@ -497,14 +501,14 @@ def test_registry_lists_names():
     assert reg.names() == ["echo"]
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_tools.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/tools.py`:
 ```python
@@ -540,14 +544,14 @@ class ToolRegistry:
         return list(self._tools.keys())
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_tools.py -v
 ```
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/tools.py tests/test_tools.py
@@ -557,6 +561,7 @@ git commit -m "feat(core): add Tool protocol and ToolRegistry"
 ---
 
 ## Task 5: InProcessSandbox Backend
+> **Status:** ✅ complete — commits: 91ee50c
 
 **Files:**
 - Create: `sentinel/core/sandbox.py`
@@ -566,7 +571,7 @@ git commit -m "feat(core): add Tool protocol and ToolRegistry"
 - Consumes: `ToolResult` from `types`, `SandboxBackend` protocol from `tools`.
 - Produces: `InProcessSandbox` (restricted working dir; enforces path boundaries).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_sandbox.py`:
 ```python
@@ -608,14 +613,14 @@ async def test_write_outside_workspace_denied(tmp_path):
     assert "denied" in r.error.lower()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_sandbox.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/sandbox.py`:
 ```python
@@ -674,14 +679,14 @@ class InProcessSandbox:
             return ToolResult(success=False, error=str(exc))
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_sandbox.py -v
 ```
 Expected: PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/sandbox.py tests/test_sandbox.py
@@ -691,6 +696,7 @@ git commit -m "feat(core): add InProcessSandbox with path boundary enforcement"
 ---
 
 ## Task 6: Guardrail Protocol + PatternGuardrail
+> **Status:** ✅ complete — commits: 14997c0 / 2c93ddd
 
 **Files:**
 - Create: `sentinel/core/guardrails.py`
@@ -700,7 +706,7 @@ git commit -m "feat(core): add InProcessSandbox with path boundary enforcement"
 - Consumes: `Action`, `Decision`, `RiskLevel`, `GuardrailResult`, `RunContext` from `types`.
 - Produces: `Guardrail` protocol (`name`, `check(action, ctx) -> GuardrailResult`), `PatternGuardrail`, `DEFAULT_PATTERNS`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_guardrails.py`:
 ```python
@@ -737,14 +743,14 @@ def test_guardrail_is_protocol():
     assert hasattr(Guardrail, "check")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_guardrails.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/guardrails.py`:
 ```python
@@ -800,14 +806,14 @@ class PatternGuardrail:
         )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_guardrails.py -v
 ```
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/guardrails.py tests/test_guardrails.py
@@ -817,6 +823,7 @@ git commit -m "feat(governance): add Guardrail protocol and PatternGuardrail"
 ---
 
 ## Task 7: ScopeFence + SandboxBoundary + RiskClassifier Guardrails
+> **Status:** ✅ complete — commits: 3b2311a
 
 **Files:**
 - Modify: `sentinel/core/guardrails.py` (add three guardrails)
@@ -825,7 +832,7 @@ git commit -m "feat(governance): add Guardrail protocol and PatternGuardrail"
 **Interfaces:**
 - Produces: `ScopeFenceGuardrail`, `SandboxBoundaryGuardrail`, `RiskClassifierGuardrail`.
 
-- [ ] **Step 1: Write the failing tests (append to `tests/test_guardrails.py`)**
+- [x] **Step 1: Write the failing tests (append to `tests/test_guardrails.py`)**
 
 ```python
 from sentinel.core.guardrails import (
@@ -874,14 +881,14 @@ def test_risk_classifier_assigns_critical_to_shell():
     assert r.risk_level == RiskLevel.HIGH
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_guardrails.py -v
 ```
 Expected: FAIL with `ImportError: cannot import name 'ScopeFenceGuardrail'`
 
-- [ ] **Step 3: Write minimal implementation (append to `sentinel/core/guardrails.py`)**
+- [x] **Step 3: Write minimal implementation (append to `sentinel/core/guardrails.py`)**
 
 ```python
 from pathlib import Path
@@ -961,14 +968,14 @@ class RiskClassifierGuardrail:
         return GuardrailResult(Decision.ALLOW, "classified", risk, self.name)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_guardrails.py -v
 ```
 Expected: PASS (all guardrail tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/guardrails.py tests/test_guardrails.py
@@ -978,6 +985,7 @@ git commit -m "feat(governance): add ScopeFence, SandboxBoundary, RiskClassifier
 ---
 
 ## Task 8: GuardrailPipeline (aggregation)
+> **Status:** ✅ complete — commits: bfab311 / c2756a5
 
 **Files:**
 - Modify: `sentinel/core/guardrails.py` (add `GuardrailPipeline`)
@@ -986,7 +994,7 @@ git commit -m "feat(governance): add ScopeFence, SandboxBoundary, RiskClassifier
 **Interfaces:**
 - Produces: `GuardrailPipeline.check(action, ctx) -> GuardrailResult` (aggregates: any Deny → Deny; else any RequireApproval → RequireApproval with highest risk; else Allow).
 
-- [ ] **Step 1: Write the failing tests (append)**
+- [x] **Step 1: Write the failing tests (append)**
 
 ```python
 from sentinel.core.guardrails import GuardrailPipeline
@@ -1013,14 +1021,14 @@ def test_pipeline_highest_risk_wins():
     assert r.risk_level == RiskLevel.HIGH
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_guardrails.py -v
 ```
 Expected: FAIL with `ImportError: cannot import name 'GuardrailPipeline'`
 
-- [ ] **Step 3: Write minimal implementation (append to `sentinel/core/guardrails.py`)**
+- [x] **Step 3: Write minimal implementation (append to `sentinel/core/guardrails.py`)**
 
 ```python
 class GuardrailPipeline:
@@ -1042,14 +1050,14 @@ class GuardrailPipeline:
         return GuardrailResult(Decision.ALLOW, "no guardrails", RiskLevel.LOW, "pipeline")
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_guardrails.py -v
 ```
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/guardrails.py tests/test_guardrails.py
@@ -1059,6 +1067,7 @@ git commit -m "feat(governance): add GuardrailPipeline with deny/approve aggrega
 ---
 
 ## Task 9: Approval Policies
+> **Status:** ✅ complete — commits: e8f85cd / e20bdb5
 
 **Files:**
 - Create: `sentinel/core/approval.py`
@@ -1068,7 +1077,7 @@ git commit -m "feat(governance): add GuardrailPipeline with deny/approve aggrega
 - Consumes: `Action`, `GuardrailResult`, `Approval`, `ApprovalDecision` from `types`.
 - Produces: `ApprovalPolicy` protocol (`async approve(action, result) -> Approval`), `AutoApprove`, `AutoDeny`, `ThresholdApprove`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_approval.py`:
 ```python
@@ -1111,14 +1120,14 @@ def test_approval_policy_is_protocol():
     assert hasattr(ApprovalPolicy, "approve")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_approval.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/approval.py`:
 ```python
@@ -1155,14 +1164,14 @@ class ThresholdApprove:
         return Approval(ApprovalDecision.DENIED, "above threshold")
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_approval.py -v
 ```
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/approval.py tests/test_approval.py
@@ -1172,6 +1181,7 @@ git commit -m "feat(governance): add ApprovalPolicy and AutoApprove/AutoDeny/Thr
 ---
 
 ## Task 10: HITL State Machine
+> **Status:** ✅ complete — commits: f049803
 
 **Files:**
 - Create: `sentinel/core/hitl.py`
@@ -1180,7 +1190,7 @@ git commit -m "feat(governance): add ApprovalPolicy and AutoApprove/AutoDeny/Thr
 **Interfaces:**
 - Produces: `ActionState` enum, `HITLStateMachine` (`submit(action) -> state`, `approve(action_id)`, `deny(action_id)`, `timeout(action_id)`, `mark_executed(action_id)`, `state(action_id)`). Illegal transitions raise. Timeout → Skipped (fail-closed).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_hitl.py`:
 ```python
@@ -1237,14 +1247,14 @@ def test_unknown_action_raises():
         fsm.approve("nope")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_hitl.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/hitl.py`:
 ```python
@@ -1306,14 +1316,14 @@ class HITLStateMachine:
             )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_hitl.py -v
 ```
 Expected: PASS (8 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/hitl.py tests/test_hitl.py
@@ -1323,6 +1333,7 @@ git commit -m "feat(governance): add HITL state machine with fail-closed transit
 ---
 
 ## Task 11: Audit Log
+> **Status:** ✅ complete — commits: e67cfb9
 
 **Files:**
 - Create: `sentinel/core/audit.py`
@@ -1331,7 +1342,7 @@ git commit -m "feat(governance): add HITL state machine with fail-closed transit
 **Interfaces:**
 - Produces: `AuditEntry` dataclass, `AuditLog` (`append(entry)`, `for_action(action_id)`, `query(**filters)`, `all()`). Backed by in-memory list (SQLite swap-in later).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_audit.py`:
 ```python
@@ -1371,14 +1382,14 @@ def test_all_returns_everything():
     assert len(log.all()) == 2
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_audit.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/audit.py`:
 ```python
@@ -1424,14 +1435,14 @@ class AuditLog:
         return list(self._entries)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_audit.py -v
 ```
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/audit.py tests/test_audit.py
@@ -1441,6 +1452,7 @@ git commit -m "feat(governance): add append-only AuditLog"
 ---
 
 ## Task 12: Feedback Validators
+> **Status:** ✅ complete — commits: 0becacd
 
 **Files:**
 - Create: `sentinel/core/feedback.py`
@@ -1450,7 +1462,7 @@ git commit -m "feat(governance): add append-only AuditLog"
 - Consumes: `ToolResult`, `Action`, `Feedback`, `Failure`, `FailureKind` from `types`.
 - Produces: `Validator` protocol (`parse(tool_result, action) -> Feedback`), `PytestValidator`, `RuffValidator`, `MypyValidator`, `select_validator(action)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_feedback.py`:
 ```python
@@ -1501,14 +1513,14 @@ def test_select_validator_mypy():
     assert isinstance(select_validator(Action("run_shell", {"cmd": "mypy src"})), MypyValidator)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_feedback.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/feedback.py`:
 ```python
@@ -1572,14 +1584,14 @@ def select_validator(action: Action) -> Validator:
     return PytestValidator()
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_feedback.py -v
 ```
 Expected: PASS (9 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/feedback.py tests/test_feedback.py
@@ -1589,6 +1601,7 @@ git commit -m "feat(feedback): add pytest/ruff/mypy validators and selector"
 ---
 
 ## Task 13: Agent Main Loop
+> **Status:** ✅ complete — commits: 9807435 / 8b4643c
 
 **Files:**
 - Create: `sentinel/core/loop.py`
@@ -1598,7 +1611,7 @@ git commit -m "feat(feedback): add pytest/ruff/mypy validators and selector"
 - Consumes: `LLMProvider`, `ToolRegistry`, `GuardrailPipeline`, `ApprovalPolicy`, `RunContext`, `Event`, `Action`, `ToolResult`, `Feedback`, `HITLStateMachine`, `AuditLog`, `select_validator`.
 - Produces: `async def agent_loop(ctx, llm, tools, pipeline, approval_policy, sandbox, audit, hitl, max_turns) -> AsyncIterator[Event]`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_loop.py`:
 ```python
@@ -1682,14 +1695,14 @@ async def test_loop_stops_on_max_turns():
     assert "max_turns" in events[-1].data.get("reason", "")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_loop.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/loop.py`:
 ```python
@@ -1772,14 +1785,14 @@ async def agent_loop(
     yield Event(type="Stopped", data={"reason": "max_turns"})
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_loop.py -v
 ```
 Expected: PASS (3 tests). The `mark_executed` call is guarded by `action.id in hitl._states` so ALLOW-path actions (never submitted to the HITL machine) are not tracked — only `REQUIRE_APPROVAL` actions walk the state machine.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/loop.py tests/test_loop.py
@@ -1789,6 +1802,7 @@ git commit -m "feat(core): add async agent_loop with governance + feedback integ
 ---
 
 ## Task 14: Memory Store
+> **Status:** ✅ complete — commits: add49ba
 
 **Files:**
 - Create: `sentinel/core/memory.py`
@@ -1797,7 +1811,7 @@ git commit -m "feat(core): add async agent_loop with governance + feedback integ
 **Interfaces:**
 - Produces: `MemoryStore` (`add(kind, key, content)`, `search(query, limit) -> list`, uses sqlite3 + TF-IDF). Self-implemented (no framework memory).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_memory.py`:
 ```python
@@ -1824,14 +1838,14 @@ def test_empty_query_returns_any(tmp_path):
     assert len(store.search("")) >= 1
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_memory.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/memory.py`:
 ```python
@@ -1894,14 +1908,14 @@ class MemoryStore:
         return [content for score, content in scored[:limit] if score > 0] or [rows[0][3]]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_memory.py -v
 ```
 Expected: PASS (3 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/memory.py tests/test_memory.py
@@ -1911,6 +1925,7 @@ git commit -m "feat(memory): add self-implemented SQLite + TF-IDF MemoryStore"
 ---
 
 ## Task 15: Config Loader
+> **Status:** ✅ complete — commits: a4e0d9e
 
 **Files:**
 - Create: `sentinel/core/config.py`
@@ -1920,7 +1935,7 @@ git commit -m "feat(memory): add self-implemented SQLite + TF-IDF MemoryStore"
 **Interfaces:**
 - Produces: `Config` dataclass, `load_config(path) -> Config`. Reads provider/model, allowed tools, risk thresholds, sandbox, guardrail patterns, max_turns, approval timeout.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_config.py`:
 ```python
@@ -1958,14 +1973,14 @@ def test_load_config_missing_required_raises(tmp_path):
         load_config(str(p))
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_config.py -v
 ```
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/config.py`:
 ```python
@@ -2022,14 +2037,14 @@ guardrail_patterns:
   - "git push --force"
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 python -m pytest tests/test_config.py -v
 ```
 Expected: PASS (2 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/core/config.py sentinel.yaml tests/test_config.py
@@ -2039,6 +2054,7 @@ git commit -m "feat(config): add YAML config loader with required-key validation
 ---
 
 ## Task 16: Mechanism Demo (§A.6 ①②③)
+> **Status:** ✅ complete — commits: 0eb386a
 
 **Files:**
 - Create: `tests/test_mechanism_demo.py`
@@ -2046,7 +2062,7 @@ git commit -m "feat(config): add YAML config loader with required-key validation
 **Interfaces:**
 - Consumes: all core modules. Reproduces ① governance intercept, ② feedback self-correction, ③ HITL depth — under `MockLLM`, deterministically.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_mechanism_demo.py`:
 ```python
@@ -2150,28 +2166,28 @@ async def test_demo_hitl_depth():
     assert not any(e.type == "ActionExecuted" for e in events)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 python -m pytest tests/test_mechanism_demo.py -v
 ```
 Expected: FAIL (Task 16 written before its dependencies are green in a fresh session; once Tasks 1–15 pass, this should pass too).
 
-- [ ] **Step 3: Verify the demo passes**
+- [x] **Step 3: Verify the demo passes**
 
 ```bash
 python -m pytest tests/test_mechanism_demo.py -v
 ```
 Expected: PASS (3 tests). The `StubShell` tools already expose `name = "run_shell"` and `risk_level = RiskLevel.HIGH` as class attributes, satisfying the `Tool` protocol shape; `SwitchingRegistry` only needs `get()`/`names()`.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 ```bash
 python -m pytest -q
 ```
 Expected: all tests PASS (no network, no Docker, no real LLM).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/test_mechanism_demo.py sentinel/core/loop.py

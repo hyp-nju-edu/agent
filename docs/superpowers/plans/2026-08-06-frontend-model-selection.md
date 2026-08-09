@@ -23,6 +23,7 @@
 ---
 
 ### Task 1: Backend model registry + `GET /models`
+> **Status:** ✅ complete — commits: 4867140
 
 **Files:**
 - Modify: `sentinel/server/app.py`
@@ -32,7 +33,7 @@
 - Consumes: nothing new.
 - Produces: `MODEL_REGISTRY: dict[str, list[str]]` module constant; `GET /models` returning `{"providers": {...}, "default": {"provider": str, "model": str}}`; `create_app(default_provider: str = "openai", default_model: str = "gpt-4o-mini")` kwargs.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_server.py`:
 
@@ -58,12 +59,12 @@ def test_models_endpoint_custom_defaults():
     assert data["default"] == {"provider": "anthropic", "model": "claude-sonnet-4"}
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_server.py -q`
 Expected: FAIL — `cannot import name 'MODEL_REGISTRY'` and 404 on `/models`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `sentinel/server/app.py`, above `def _build_pipeline`, add:
 
@@ -101,12 +102,12 @@ Inside `create_app`, after the `/health` route, add:
         }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_server.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/test_server.py sentinel/server/app.py
@@ -116,6 +117,7 @@ git commit -m "feat: add GET /models endpoint with model registry"
 ---
 
 ### Task 2: Session-scoped LLM construction via `llm_builder`
+> **Status:** ✅ complete — commits: be135a7
 
 **Files:**
 - Modify: `sentinel/server/app.py`
@@ -125,7 +127,7 @@ git commit -m "feat: add GET /models endpoint with model registry"
 - Consumes: `MODEL_REGISTRY`, `create_app` defaults from Task 1; existing `_run_session`.
 - Produces: `create_app(llm_builder: Callable[[str, str], LLMProvider] | None = None)`; `_run_session` accepts `llm_builder`, `provider`, `model`; task messages carrying `provider`/`model` build a real LLM; builder exceptions produce `{"type":"Error","data":{"message":...}}` then `SessionComplete` with no agent events.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_server.py`:
 
@@ -190,12 +192,12 @@ def test_ws_without_provider_falls_back_to_injected_llm():
     assert any(e["type"] == "TurnStarted" for e in events)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_server.py -q`
 Expected: FAIL — `unexpected keyword argument 'llm_builder'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `sentinel/server/app.py`, add `Callable` to the typing import:
 
@@ -276,12 +278,12 @@ Change `_run_session` signature and body to build a session-scoped LLM:
 
 (The rest of `_run_session` — approval policy setup and `agent_loop` — is unchanged.)
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_server.py -q`
 Expected: PASS (including the pre-existing WS tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/test_server.py sentinel/server/app.py
@@ -291,6 +293,7 @@ git commit -m "feat: session-scoped llm_builder with Error event"
 ---
 
 ### Task 3: CLI wiring for `build_llm` + keyring
+> **Status:** ✅ complete — commits: 43103d1
 
 **Files:**
 - Modify: `sentinel/cli.py`
@@ -300,7 +303,7 @@ git commit -m "feat: session-scoped llm_builder with Error event"
 - Consumes: `create_app(llm, llm_builder, default_provider, default_model, ...)` from Tasks 1–2; existing `build_llm`, `load_config`, `get_credential_store`.
 - Produces: `build_server_app(config, cs, workspace=".") -> FastAPI` helper in `sentinel/cli.py`; `cmd_serve` delegates to it.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_cli.py`:
 
@@ -327,12 +330,12 @@ def test_build_server_app_missing_key_raises():
         build_server_app(Config(provider="openai", model="gpt-4o-mini"), cs)
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_cli.py -q`
 Expected: FAIL — `cannot import name 'build_server_app'`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `sentinel/cli.py`, add `Config` to the module imports:
 
@@ -380,12 +383,12 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 Note: the `from sentinel.server.app import build_llm` import moves out of `cmd_serve` into `build_server_app` (keep it inside the function to preserve the lazy-import pattern and avoid pulling fastapi at module load).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_cli.py tests/test_build_llm.py -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add sentinel/cli.py tests/test_cli.py
@@ -395,6 +398,7 @@ git commit -m "feat: wire llm_builder into serve command"
 ---
 
 ### Task 4: Frontend provider/model selectors
+> **Status:** ✅ complete — commits: 53ac721
 
 **Files:**
 - Modify: `sentinel/server/static/index.html`
@@ -403,7 +407,7 @@ git commit -m "feat: wire llm_builder into serve command"
 - Consumes: `GET /models` (Task 1), task message with `provider`/`model`, `Error` event (Task 2).
 - Produces: provider + model `<select>`s in the header, populated from `/models`; task messages include the selection; `Error` events render in red. (Frontend has no JS test harness; verification is manual.)
 
-- [ ] **Step 1: Add the selects to the header**
+- [x] **Step 1: Add the selects to the header**
 
 Replace the `<header>` block:
 
@@ -416,7 +420,7 @@ Replace the `<header>` block:
 </header>
 ```
 
-- [ ] **Step 2: Add styles for selects and Error events**
+- [x] **Step 2: Add styles for selects and Error events**
 
 Append to the `<style>` block:
 
@@ -428,7 +432,7 @@ Append to the `<style>` block:
   .event.error { border-color:var(--red); }
 ```
 
-- [ ] **Step 3: Add JS to load models and populate selects**
+- [x] **Step 3: Add JS to load models and populate selects**
 
 Add before `sendBtn.onclick`:
 
@@ -467,7 +471,7 @@ function populateModels() {
 loadModels();
 ```
 
-- [ ] **Step 4: Include selection in the task message**
+- [x] **Step 4: Include selection in the task message**
 
 Replace the `sendBtn.onclick` body with:
 
@@ -485,7 +489,7 @@ sendBtn.onclick = () => {
 };
 ```
 
-- [ ] **Step 5: Render Error events**
+- [x] **Step 5: Render Error events**
 
 Add a branch at the top of `ws.onmessage`:
 
@@ -504,7 +508,7 @@ ws.onmessage = (e) => {
 };
 ```
 
-- [ ] **Step 6: Manual verification**
+- [x] **Step 6: Manual verification**
 
 Run: `python -m pytest -q` (all backend tests still pass, including Task 1–2 WS tests).
 
@@ -517,7 +521,7 @@ Expected (open http://localhost:8000):
 - Changing provider to `anthropic` swaps the model list to the Anthropic models.
 - Sending a task produces events; with a fake `llm_builder` scenario, `Error` events render as red cards.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add sentinel/server/static/index.html
