@@ -179,3 +179,29 @@ async def test_loop_appends_assistant_message():
                               AuditLog(), HITLStateMachine(), max_turns=5):
         events.append(e)
     assert any(e.type == "Stopped" and e.data.get("reason") == "done" for e in events)
+
+
+@pytest.mark.asyncio
+async def test_loop_sends_task_as_user_message():
+    from sentinel.core.llm import LLMProvider, LLMResponse as LR
+    from sentinel.core.loop import agent_loop as al
+
+    class SpyLLM:
+        def __init__(self):
+            self.messages = None
+        async def complete(self, messages, tools):
+            self.messages = list(messages)
+            return LR(text="done", tool_calls=[])
+
+    spy = SpyLLM()
+    events = []
+    async for e in al(RunContext(task="fix the failing test"), spy,
+                      ToolRegistry([StubTool()]), GuardrailPipeline([PatternGuardrail()]),
+                      AutoApprove(), InProcessSandbox(workspace="."),
+                      AuditLog(), HITLStateMachine(), max_turns=3):
+        events.append(e)
+    assert spy.messages is not None
+    roles = [m["role"] for m in spy.messages]
+    assert "user" in roles, f"expected a user message carrying the task, got roles: {roles}"
+    user_content = next(m["content"] for m in spy.messages if m["role"] == "user")
+    assert "fix the failing test" in user_content

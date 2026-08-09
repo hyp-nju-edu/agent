@@ -1,12 +1,11 @@
-provider: openai
-model: gpt-4o-mini
+provider: anthropic
+model: MiniMax-M3
 max_turns: 10
 approval_timeout: 30
 # 自定义 API 端点（可选）。未配置时使用官方端点。
 # 仅指定 URL，凭据仍来自系统钥匙串 / 环境变量。
-# api_base:
-#   openai: https://your-proxy.example/v1
-#   anthropic: https://your-anthropic-proxy.example
+api_base:
+  anthropic: https://api.minimaxi.com/anthropic
 sandbox:
   image: sentinel-sandbox:latest
   network: false

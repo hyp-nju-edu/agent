@@ -39,7 +39,8 @@ async def agent_loop(
     memory: MemoryStore | None = None,
 ) -> AsyncIterator[Event]:
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": build_system_prompt(ctx.task, memory)}
+        {"role": "system", "content": build_system_prompt(ctx.task, memory)},
+        {"role": "user", "content": ctx.task},
     ]
     for turn in range(max_turns):
         try:
