@@ -11,11 +11,13 @@ class OpenAIProvider:
     """LLM provider using raw httpx calls to the OpenAI chat completions API."""
 
     def __init__(self, api_key: str, model: str,
+                 base_url: str | None = None,
                  client: httpx.AsyncClient | None = None) -> None:
         self._api_key = api_key
         self._model = model
+        self._base_url = base_url or "https://api.openai.com"
         self._client = client or httpx.AsyncClient(
-            base_url="https://api.openai.com", timeout=60.0)
+            base_url=self._base_url, timeout=60.0)
 
     async def complete(self, messages: list[dict[str, Any]],
                        tools: list[dict[str, Any]]) -> LLMResponse:
@@ -44,11 +46,13 @@ class AnthropicProvider:
     """LLM provider using raw httpx calls to the Anthropic messages API."""
 
     def __init__(self, api_key: str, model: str,
+                 base_url: str | None = None,
                  client: httpx.AsyncClient | None = None) -> None:
         self._api_key = api_key
         self._model = model
+        self._base_url = base_url or "https://api.anthropic.com"
         self._client = client or httpx.AsyncClient(
-            base_url="https://api.anthropic.com", timeout=60.0)
+            base_url=self._base_url, timeout=60.0)
 
     async def complete(self, messages: list[dict[str, Any]],
                        tools: list[dict[str, Any]]) -> LLMResponse:

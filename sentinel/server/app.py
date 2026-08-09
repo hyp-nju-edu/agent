@@ -82,10 +82,11 @@ def build_llm(
         key = env_key or None
     if not key:
         raise RuntimeError(f"no api key for provider '{config.provider}'")
+    base_url = config.api_base.get(config.provider)
     if config.provider == "openai":
-        return OpenAIProvider(api_key=key, model=config.model)
+        return OpenAIProvider(api_key=key, model=config.model, base_url=base_url)
     if config.provider == "anthropic":
-        return AnthropicProvider(api_key=key, model=config.model)
+        return AnthropicProvider(api_key=key, model=config.model, base_url=base_url)
     raise ValueError(f"unknown provider: {config.provider}")
 
 

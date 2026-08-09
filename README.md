@@ -27,6 +27,12 @@ pip install -e ".[dev,all]"
 sentinel config set-key --provider openai
 sentinel config status
 
+# (Optional) custom API endpoints in sentinel.yaml:
+#   api_base:
+#     openai: https://your-proxy.example/v1
+#     anthropic: https://your-anthropic-proxy.example
+# Unset api_base → official OpenAI/Anthropic endpoints.
+
 # Start the WebUI
 sentinel serve
 # Open http://localhost:8000

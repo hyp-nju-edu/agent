@@ -30,3 +30,21 @@ def test_load_config_missing_required_raises(tmp_path):
     p.write_text("provider: openai\n")
     with pytest.raises(ValueError, match="missing"):
         load_config(str(p))
+
+def test_load_config_api_base(tmp_path):
+    import textwrap
+    yaml = textwrap.dedent("""
+        provider: openai
+        model: gpt-4o-mini
+        api_base:
+          openai: https://proxy.example.com
+          anthropic: https://proxy-anthropic.example.com
+    """)
+    p = tmp_path / "sentinel.yaml"
+    p.write_text(yaml)
+    cfg = load_config(str(p))
+    assert cfg.api_base["openai"] == "https://proxy.example.com"
+    assert cfg.api_base["anthropic"] == "https://proxy-anthropic.example.com"
+
+def test_config_api_base_defaults_empty():
+    assert Config(provider="openai", model="m").api_base == {}
