@@ -49,13 +49,14 @@ README.md
 ---
 
 ## Task 1: Add Phase 2 Dependencies
+> **Status:** ✅ complete — commits: 006cc6b
 
 **Files:**
 - Modify: `pyproject.toml`
 
 **Interfaces:** Produces installable optional dependency groups `server`, `credentials`, `all`.
 
-- [ ] **Step 1: Update `pyproject.toml`**
+- [x] **Step 1: Update `pyproject.toml`**
 
 Replace the `[project]` and `[project.optional-dependencies]` sections:
 
@@ -76,7 +77,7 @@ all = ["fastapi>=0.110", "uvicorn>=0.29", "keyring>=24.0"]
 sentinel = "sentinel.cli:main"
 ```
 
-- [ ] **Step 2: Install new deps**
+- [x] **Step 2: Install new deps**
 
 Run:
 ```bash
@@ -84,12 +85,12 @@ python -m pip install -e ".[dev,all]"
 ```
 Expected: fastapi, uvicorn, keyring installed successfully.
 
-- [ ] **Step 3: Verify existing tests still pass**
+- [x] **Step 3: Verify existing tests still pass**
 
 Run: `python -m pytest -q`
 Expected: 97 passed.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add pyproject.toml
@@ -99,6 +100,7 @@ git commit -m "chore: add Phase 2 deps (httpx, fastapi, uvicorn, keyring)"
 ---
 
 ## Task 2: Real LLM Providers (OpenAI + Anthropic via httpx)
+> **Status:** ✅ complete — commits: ac5e909
 
 **Files:**
 - Create: `sentinel/core/providers.py`
@@ -108,7 +110,7 @@ git commit -m "chore: add Phase 2 deps (httpx, fastapi, uvicorn, keyring)"
 - Consumes: `LLMProvider` protocol, `LLMResponse` from `llm.py`.
 - Produces: `OpenAIProvider(api_key, model, client=None)`, `AnthropicProvider(api_key, model, client=None)`. Both implement `async complete(messages, tools) -> LLMResponse`. The `client` param accepts an `httpx.AsyncClient` (for testing with `httpx.MockTransport`).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_providers.py`:
 ```python
@@ -220,12 +222,12 @@ async def test_anthropic_provider_text_only():
     await client.aclose()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_providers.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'sentinel.core.providers'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/core/providers.py`:
 ```python
@@ -308,17 +310,17 @@ class AnthropicProvider:
         return LLMResponse(text=text, tool_calls=tool_calls)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_providers.py -v`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 103 passed (97 + 6)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add sentinel/core/providers.py tests/test_providers.py
@@ -328,6 +330,7 @@ git commit -m "feat(llm): add OpenAI and Anthropic providers via httpx"
 ---
 
 ## Task 3: HumanApprove Policy (async resolver + timeout)
+> **Status:** ✅ complete — commits: 4c1b597
 
 **Files:**
 - Modify: `sentinel/core/approval.py`
@@ -337,7 +340,7 @@ git commit -m "feat(llm): add OpenAI and Anthropic providers via httpx"
 - Consumes: `ApprovalPolicy` protocol, `Action`, `GuardrailResult`, `Approval`, `ApprovalDecision` from `types`.
 - Produces: `HumanApprove(resolver, timeout=30)`. `resolver` is `async (action, result) -> Approval`. Timeout → `Approval(DENIED, "approval timeout")` (fail-closed).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_human_approve.py`:
 ```python
@@ -396,12 +399,12 @@ async def test_human_approve_resolver_error_denies():
     assert "error" in a.reason.lower() or "resolver" in a.reason.lower()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_human_approve.py -v`
 Expected: FAIL with `ImportError: cannot import name 'HumanApprove'`
 
-- [ ] **Step 3: Write minimal implementation (append to `sentinel/core/approval.py`)**
+- [x] **Step 3: Write minimal implementation (append to `sentinel/core/approval.py`)**
 
 Add at the end of `sentinel/core/approval.py`:
 ```python
@@ -428,17 +431,17 @@ class HumanApprove:
             return Approval(ApprovalDecision.DENIED, f"resolver error: {e}")
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_human_approve.py -v`
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 107 passed (103 + 4)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add sentinel/core/approval.py tests/test_human_approve.py
@@ -448,6 +451,7 @@ git commit -m "feat(governance): add HumanApprove policy with fail-closed timeou
 ---
 
 ## Task 4: Productionize the Loop (assistant messages + memory)
+> **Status:** ✅ complete — commits: 54e0433
 
 **Files:**
 - Modify: `sentinel/core/loop.py`
@@ -457,7 +461,7 @@ git commit -m "feat(governance): add HumanApprove policy with fail-closed timeou
 - Consumes: `MemoryStore` from `memory.py`, `Config` from `config.py`.
 - Produces: `agent_loop` now appends assistant messages to the conversation, injects memory snippets into the system prompt, and accepts an optional `memory` parameter.
 
-- [ ] **Step 1: Write the failing tests (append to `tests/test_loop.py`)**
+- [x] **Step 1: Write the failing tests (append to `tests/test_loop.py`)**
 
 ```python
 from sentinel.core.memory import MemoryStore
@@ -493,12 +497,12 @@ async def test_loop_appends_assistant_message():
     assert any(e.type == "Stopped" and e.data.get("reason") == "done" for e in events)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_loop.py::test_build_system_prompt_includes_task_and_memory -v`
 Expected: FAIL with `ImportError: cannot import name 'build_system_prompt'`
 
-- [ ] **Step 3: Write minimal implementation (modify `sentinel/core/loop.py`)**
+- [x] **Step 3: Write minimal implementation (modify `sentinel/core/loop.py`)**
 
 Replace the top of `loop.py` (imports + first lines of `agent_loop`) with:
 
@@ -557,17 +561,17 @@ And after `yield Event(type="LLMResponse", ...)` add:
                 messages.append({"role": "assistant", "content": resp.text})
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_loop.py -v`
 Expected: PASS (all loop tests including new ones)
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 110 passed (107 + 3)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add sentinel/core/loop.py tests/test_loop.py
@@ -577,6 +581,7 @@ git commit -m "feat(core): productionize loop with memory context and assistant 
 ---
 
 ## Task 5: Credential Store (keyring-backed, injectable)
+> **Status:** ✅ complete — commits: 6e4fa55
 
 **Files:**
 - Create: `sentinel/credentials.py`
@@ -585,7 +590,7 @@ git commit -m "feat(core): productionize loop with memory context and assistant 
 **Interfaces:**
 - Produces: `CredentialStore(backend=None)` with `set_key(provider, key)`, `get_key(provider) -> str|None`, `clear_key(provider)`, `status() -> dict[str,str]`. Default backend is the `keyring` module; tests inject a fake in-memory backend.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_credentials.py`:
 ```python
@@ -648,12 +653,12 @@ def test_status_never_shows_plaintext():
     assert "sk-super-secret" not in s
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_credentials.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/credentials.py`:
 ```python
@@ -697,17 +702,17 @@ class CredentialStore:
         return {p: ("set" if self.get_key(p) else "not set") for p in PROVIDERS}
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_credentials.py -v`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 116 passed (110 + 6)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add sentinel/credentials.py tests/test_credentials.py
@@ -717,6 +722,7 @@ git commit -m "feat(creds): add keyring-backed CredentialStore with injectable b
 ---
 
 ## Task 6: CLI (config set-key / status / clear-key, serve)
+> **Status:** ✅ complete — commits: e24977d
 
 **Files:**
 - Create: `sentinel/cli.py`
@@ -725,7 +731,7 @@ git commit -m "feat(creds): add keyring-backed CredentialStore with injectable b
 **Interfaces:**
 - Produces: `main(argv=None)` entry point. Subcommands: `config set-key --provider <p>`, `config status`, `config clear-key --provider <p>`, `serve [--host] [--port]`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_cli.py`:
 ```python
@@ -781,12 +787,12 @@ def test_config_clear_key(monkeypatch, capsys):
     assert cs.get_key("anthropic") is None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_cli.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/cli.py`:
 ```python
@@ -865,17 +871,17 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_cli.py -v`
 Expected: PASS (3 tests)
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 119 passed (116 + 3)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add sentinel/cli.py tests/test_cli.py
@@ -885,6 +891,7 @@ git commit -m "feat(cli): add config set-key/status/clear-key and serve commands
 ---
 
 ## Task 7: FastAPI WebSocket Server
+> **Status:** ✅ complete — commits: 406c7ab
 
 **Files:**
 - Create: `sentinel/server/__init__.py`
@@ -895,7 +902,7 @@ git commit -m "feat(cli): add config set-key/status/clear-key and serve commands
 - Consumes: `agent_loop`, `MockLLM`, `AutoApprove`, `GuardrailPipeline`, `InProcessSandbox`, `AuditLog`, `HITLStateMachine`, `RunContext`.
 - Produces: `create_app()` -> FastAPI app. WebSocket endpoint `GET /ws` accepts `{"type":"task","task":"..."}`, streams `Event`s as JSON lines. REST: `GET /health`, `GET /audit`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/test_server.py`:
 ```python
@@ -956,12 +963,12 @@ def test_audit_endpoint():
     assert len(entries) > 0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_server.py -v`
 Expected: FAIL with `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `sentinel/server/__init__.py`:
 ```python
@@ -1066,17 +1073,17 @@ def create_app(workspace: str = ".") -> FastAPI:
     return app
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_server.py -v`
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Run full suite**
+- [x] **Step 5: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 123 passed (119 + 4)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add sentinel/server/__init__.py sentinel/server/app.py tests/test_server.py
@@ -1086,13 +1093,14 @@ git commit -m "feat(server): add FastAPI WebSocket server with audit REST endpoi
 ---
 
 ## Task 8: Minimal Frontend (linear-app styled)
+> **Status:** ✅ complete — commits: c835e10
 
 **Files:**
 - Create: `sentinel/server/static/index.html`
 
 **Interfaces:** Static HTML+CSS+JS. Connects to `/ws`, sends task, renders streaming events, shows audit trail. Dark theme styled after linear-app.
 
-- [ ] **Step 1: Create the frontend**
+- [x] **Step 1: Create the frontend**
 
 `sentinel/server/static/index.html`:
 ```html
@@ -1224,17 +1232,17 @@ input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendBtn.click(
 </html>
 ```
 
-- [ ] **Step 2: Verify server serves the page**
+- [x] **Step 2: Verify server serves the page**
 
 Run: `python -c "from sentinel.server.app import create_app; from fastapi.testclient import TestClient; c=TestClient(create_app()); r=c.get('/'); print(r.status_code, len(r.text))"`
 Expected: `200` and a positive length.
 
-- [ ] **Step 3: Run full suite**
+- [x] **Step 3: Run full suite**
 
 Run: `python -m pytest -q`
 Expected: 123 passed (no new tests, just static file)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add sentinel/server/static/index.html
@@ -1244,12 +1252,13 @@ git commit -m "feat(ui): add minimal linear-app-styled frontend"
 ---
 
 ## Task 9: Dockerfile
+> **Status:** ✅ complete — commits: 2386f34
 
 **Files:**
 - Create: `Dockerfile`
 - Create: `.dockerignore`
 
-- [ ] **Step 1: Create Dockerfile**
+- [x] **Step 1: Create Dockerfile**
 
 `Dockerfile`:
 ```dockerfile
@@ -1272,7 +1281,7 @@ EXPOSE 8000
 CMD ["uvicorn", "sentinel.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-- [ ] **Step 2: Create .dockerignore**
+- [x] **Step 2: Create .dockerignore**
 
 `.dockerignore`:
 ```
@@ -1287,7 +1296,7 @@ tests/
 *.db
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add Dockerfile .dockerignore
@@ -1297,12 +1306,13 @@ git commit -m "chore: add Dockerfile for containerized deployment"
 ---
 
 ## Task 10: CI (GitLab + GitHub Actions)
+> **Status:** ✅ complete — commits: 2386f34
 
 **Files:**
 - Create: `.gitlab-ci.yml`
 - Create: `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Create .gitlab-ci.yml**
+- [x] **Step 1: Create .gitlab-ci.yml**
 
 `.gitlab-ci.yml`:
 ```yaml
@@ -1320,7 +1330,7 @@ unit-test:
     - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"
 ```
 
-- [ ] **Step 2: Create GitHub Actions workflow**
+- [x] **Step 2: Create GitHub Actions workflow**
 
 `.github/workflows/ci.yml`:
 ```yaml
@@ -1346,7 +1356,7 @@ jobs:
         run: python -m pytest -q
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .gitlab-ci.yml .github/workflows/ci.yml
@@ -1356,11 +1366,12 @@ git commit -m "chore(ci): add GitLab CI and GitHub Actions workflows"
 ---
 
 ## Task 11: README
+> **Status:** ✅ complete — commits: 2386f34
 
 **Files:**
 - Create: `README.md`
 
-- [ ] **Step 1: Create README.md**
+- [x] **Step 1: Create README.md**
 
 `README.md`:
 ```markdown
@@ -1425,7 +1436,7 @@ Keys are stored in the OS keyring (macOS Keychain / Windows Credential Manager /
 MIT
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add README.md
@@ -1437,8 +1448,8 @@ git commit -m "docs: add README with quick start, testing, and architecture"
 ## Self-Review Checklist
 
 After all tasks:
-- [ ] `python -m pytest -q` shows 123+ passed
-- [ ] No `sk-` key patterns in git: `git log --all -p | findstr "sk-"` returns nothing
-- [ ] `sentinel config status` works (with a key set)
-- [ ] `sentinel serve` starts the server on :8000
-- [ ] Dockerfile builds: `docker build -t sentinel .`
+- [x] `python -m pytest -q` shows 123+ passed
+- [x] No `sk-` key patterns in git: `git log --all -p | findstr "sk-"` returns nothing
+- [x] `sentinel config status` works (with a key set)
+- [x] `sentinel serve` starts the server on :8000
+- [x] Dockerfile builds: `docker build -t sentinel .`
